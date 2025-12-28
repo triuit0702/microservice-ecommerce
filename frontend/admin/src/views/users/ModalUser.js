@@ -1,13 +1,45 @@
-/* eslint-disable prettier/prettier */
+
 import { Modal } from '@coreui/coreui'
-import { CButton, CFormInput, CModal, CModalBody, CModalFooter, CModalHeader } from '@coreui/react'
+import { CButton, CFormInput, CFormLabel, CFormSelect, CInputGroup, CInputGroupText, CModal, CModalBody, CModalFooter, CModalHeader } from '@coreui/react'
+import { useEffect, useState } from 'react'
 
 export default function ModalUser({
     visible,
     editingUser,
-    onClose,
-    userDetail
+    hideModal,
+    userDetail,
+    setUserDetail,
+    saveUser
 }) {
+
+    const [formData, setFormData] = useState({
+        name: userDetail.name,
+        email: userDetail.email,
+        role: userDetail.roleValue
+    })
+
+
+
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value })
+        // let copyForm = { ...formData}
+        // copyForm[]
+    }
+
+    const onClose = () => {
+        setFormData({
+            name: "",
+            email: "",
+            role: ""
+        })
+        hideModal()
+
+    }
+
+    useEffect(() => {
+        if (userDetail) setFormData(userDetail)
+    }, [userDetail])
+
     return (
 
 
@@ -15,22 +47,41 @@ export default function ModalUser({
             <CModalHeader>{editingUser ? 'Sửa User' : 'Thêm User'}</CModalHeader>
             <CModalBody>
                 <CFormInput
+                    name="name"
                     label="Username"
-                    value={(userDetail && editingUser) ? userDetail.username : ''}
+                    value={formData.name}
+                    onChange={handleChange}
                     className="mb-3"
                 />
 
                 <CFormInput
+                    name="email"
                     label="Email"
-                    value={(userDetail && editingUser) ? userDetail.email : ''}
+                    value={formData.email}
+                    onChange={handleChange}
                 />
+
+                <CFormLabel className="mt-2">Role</CFormLabel>
+                <CFormSelect
+                    name="role"
+                // value={form.role}
+                // onChange={handleChange}
+                >
+                    <option value="">-- Select role --</option>
+                    <option value="1">Admin</option>
+                    <option value="2">Employee</option>
+                    <option value="3">Customer</option>
+                </CFormSelect>
+
+
+
             </CModalBody>
 
             <CModalFooter>
                 <CButton color="secondary" >
                     Hủy
                 </CButton>
-                <CButton color="primary" >
+                <CButton color="primary" onClick={() => saveUser(formData)} >
                     Lưu
                 </CButton>
             </CModalFooter>

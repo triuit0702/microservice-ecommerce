@@ -1,6 +1,6 @@
-/* eslint-disable prettier/prettier */
 
-import { useState } from 'react'
+
+import { useEffect, useState } from 'react'
 import {
     CButton,
     CCard,
@@ -14,16 +14,38 @@ import {
     CTableRow,
 } from '@coreui/react'
 import ModalAddUser from './ModalUser'
+import { serviceGetAllUser, serviceSaveUser } from '../../services/UserService';
 
 export default function UserManagement() {
-    const [users, setUsers] = useState([
-        { id: 1, username: 'admin', email: 'admin@gmail.com', description: 'aaa' },
-        { id: 2, username: 'user1', email: 'user1@gmail.com', description: 'aaa' },
-    ])
+    // const [users, setUsers] = useState([
+    //     { id: 1, name: 'admin', email: 'admin@gmail.com', description: 'aaa' },
+    //     { id: 2, name: 'user1', email: 'user1@gmail.com', description: 'aaa' },
+    // ])
 
     const [visibleModal, setVisibleModal] = useState(false);
     const [editingUser, setEditingUser] = useState(false);
-    const [userDetail, setUserDetail] = useState(null);
+
+    const [users, setUsers] = useState([]);
+    const [userDetail, setUserDetail] = useState({
+        name: '',
+        email: '',
+        role: ''
+    });
+
+
+
+    function loadUsers() {
+        serviceGetAllUser().then(res => {
+            console.log("kiem tra res: ", res);
+            setUsers(res.data);
+            console.log("kiem tra data: ", users);
+        },)
+
+    }
+
+    useEffect(() => {
+        loadUsers();
+    }, [])
 
     function openAdd() {
         console.log("open ad modal");
@@ -40,13 +62,21 @@ export default function UserManagement() {
         setUserDetail(item);
     }
 
+    const handleSave = async (data) => {
+        const response = await serviceSaveUser(data);
+        setVisibleModal(false);
+        loadUsers();
+    }
+
     return (
         <CCard>
             <ModalAddUser
                 visible={visibleModal}
                 editingUser={editingUser}
-                onClose={() => setVisibleModal(false)}
+                hideModal={() => setVisibleModal(false)}
                 userDetail={userDetail}
+                setUserDetail={setUserDetail}
+                saveUser={handleSave}
             />
 
             <CCardHeader className="d-flex justify-content-between align-items-center">
@@ -66,11 +96,11 @@ export default function UserManagement() {
                         </CTableRow>
                     </CTableHead>
                     <CTableBody>
-                        {users.map((item) => (
+                        {users && users.length > 0 && users.map(item => (
                             <CTableRow key={item.id}>
 
                                 <CTableHeaderCell scope="row">{item.id}</CTableHeaderCell>
-                                <CTableDataCell>{item.username}</CTableDataCell>
+                                <CTableDataCell>{item.name}</CTableDataCell>
                                 <CTableDataCell>{item.email}</CTableDataCell>
 
                                 <CTableDataCell>
