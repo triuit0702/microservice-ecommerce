@@ -13,9 +13,10 @@ export default function ModalUser({
 }) {
 
     const [formData, setFormData] = useState({
-        name: userDetail.name,
-        email: userDetail.email,
-        role: userDetail.roleValue
+        id: null,
+        name: "",
+        email: "",
+        roleId: ""
     })
 
 
@@ -28,9 +29,10 @@ export default function ModalUser({
 
     const onClose = () => {
         setFormData({
+            id: null,
             name: "",
             email: "",
-            role: ""
+            roleId: ""
         })
         hideModal()
 
@@ -63,9 +65,9 @@ export default function ModalUser({
 
                 <CFormLabel className="mt-2">Role</CFormLabel>
                 <CFormSelect
-                    name="role"
-                // value={form.role}
-                // onChange={handleChange}
+                    name="roleId"
+                    value={formData.roleId}
+                    onChange={handleChange}
                 >
                     <option value="">-- Select role --</option>
                     <option value="1">Admin</option>

@@ -6,6 +6,8 @@ import {
     CCard,
     CCardBody,
     CCardHeader,
+    CPagination,
+    CPaginationItem,
     CTable,
     CTableBody,
     CTableDataCell,
@@ -14,7 +16,16 @@ import {
     CTableRow,
 } from '@coreui/react'
 import ModalAddUser from './ModalUser'
-import { serviceGetAllUser, serviceSaveUser } from '../../services/UserService';
+import {
+    serviceGetAllUser,
+    serviceSaveUser,
+    serviceDeleteUser,
+    serviceUpdateUser
+} from '../../services/UserService';
+import Pagination from '../common/Pagination';
+import ModalConfirm from '../common/ModalConfirm';
+
+import { useToast } from '../../contexts/ToastContext'
 
 export default function UserManagement() {
     // const [users, setUsers] = useState([
@@ -22,33 +33,40 @@ export default function UserManagement() {
     //     { id: 2, name: 'user1', email: 'user1@gmail.com', description: 'aaa' },
     // ])
 
+    const { showToast } = useToast()
+
     const [visibleModal, setVisibleModal] = useState(false);
     const [editingUser, setEditingUser] = useState(false);
 
     const [users, setUsers] = useState([]);
     const [userDetail, setUserDetail] = useState({
+        id: null,
         name: '',
         email: '',
-        role: ''
+        roleId: ''
     });
 
+    // pagination
+    const [page, setPage] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
+    const pageSize = 10;
+
+    // delete
+    const [visibleDelete, setVisibleDelete] = useState(false);
+    const [deleteUserId, setDeleteUserId] = useState(null);
 
 
-    function loadUsers() {
-        serviceGetAllUser().then(res => {
-            console.log("kiem tra res: ", res);
-            setUsers(res.data);
-            console.log("kiem tra data: ", users);
-        },)
-
+    const loadUsers = async () => {
+        let res = await serviceGetAllUser(page, pageSize);
+        setUsers(res.data.content);
+        setTotalPages(res.data.totalPages);
     }
 
     useEffect(() => {
         loadUsers();
-    }, [])
+    }, [page])
 
     function openAdd() {
-        console.log("open ad modal");
         setVisibleModal(true);
         setEditingUser(false);
 
@@ -56,20 +74,58 @@ export default function UserManagement() {
     }
 
     function openEdit(item) {
-        console.log("open edit user modal");
         setVisibleModal(true);
         setEditingUser(true);
         setUserDetail(item);
     }
 
     const handleSave = async (data) => {
-        const response = await serviceSaveUser(data);
+        console.log("data truoc khi save: ");
+        console.log(data);
+
+        if (data.id === null) {
+            await serviceSaveUser(data);
+            showToast('Tạo user mới thành công', 'success');
+
+        } else {
+            // data.id = Number(data.id);
+            await serviceUpdateUser(data);
+            showToast('Sửa user thành công', 'success');
+        }
+
         setVisibleModal(false);
+
+        loadUsers();
+
+    }
+
+    // delete user
+    const confirmDelete = async (userId) => {
+        console.log("chuan bi xoa");
+        setDeleteUserId(userId);
+        setVisibleDelete(true);
+        //await serviceDeleteUser(userId);
+        // loadUsers();
+    }
+
+    const deleteUser = async () => {
+        await serviceDeleteUser(deleteUserId);
+        setVisibleDelete(false);
+        showToast('Xóa user thành công', 'success');
         loadUsers();
     }
 
     return (
         <CCard>
+            <ModalConfirm
+                visibleDelete={visibleDelete}
+                message="Bạn có chắc chắn muốn xóa user này không?"
+                hideModalConfirm={() => {
+                    setVisibleDelete(false);
+                    setDeleteUserId(null)
+                }}
+                deleteUser={deleteUser}
+            />
             <ModalAddUser
                 visible={visibleModal}
                 editingUser={editingUser}
@@ -85,6 +141,8 @@ export default function UserManagement() {
                     Thêm User
                 </CButton>
             </CCardHeader>
+
+            {/* body table */}
             <CCardBody>
                 <CTable>
                     <CTableHead>
@@ -112,7 +170,8 @@ export default function UserManagement() {
                                     </CButton>
                                     <CButton size="sm"
                                         color="warning"
-                                        className="me-2">
+                                        className="me-2"
+                                        onClick={() => confirmDelete(item.id)} >
                                         Xóa
                                     </CButton>
                                 </CTableDataCell>
@@ -122,6 +181,14 @@ export default function UserManagement() {
 
                     </CTableBody>
                 </CTable>
+
+                {/* Pagination */}
+                <Pagination page={page}
+                    totalPages={totalPages}
+                    onPageChange={setPage} />
+
+
+
             </CCardBody>
         </CCard>
     )

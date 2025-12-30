@@ -36,4 +36,9 @@ export default [
     },
   },
   eslintPluginPrettierRecommended,
+  {
+    rules: {
+      'prettier/prettier': 'off',
+    },
+  },
 ]
