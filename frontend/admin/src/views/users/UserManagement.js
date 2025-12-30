@@ -80,7 +80,6 @@ export default function UserManagement() {
     }
 
     const handleSave = async (data) => {
-        console.log("data truoc khi save: ");
         console.log(data);
 
         if (data.id === null) {
@@ -88,7 +87,6 @@ export default function UserManagement() {
             showToast('Tạo user mới thành công', 'success');
 
         } else {
-            // data.id = Number(data.id);
             await serviceUpdateUser(data);
             showToast('Sửa user thành công', 'success');
         }
@@ -101,11 +99,8 @@ export default function UserManagement() {
 
     // delete user
     const confirmDelete = async (userId) => {
-        console.log("chuan bi xoa");
         setDeleteUserId(userId);
         setVisibleDelete(true);
-        //await serviceDeleteUser(userId);
-        // loadUsers();
     }
 
     const deleteUser = async () => {
@@ -147,9 +142,9 @@ export default function UserManagement() {
                 <CTable>
                     <CTableHead>
                         <CTableRow>
-                            <CTableHeaderCell scope="col">#</CTableHeaderCell>
-                            <CTableHeaderCell scope="col">Class</CTableHeaderCell>
-                            <CTableHeaderCell scope="col">Heading</CTableHeaderCell>
+                            <CTableHeaderCell scope="col">ID</CTableHeaderCell>
+                            <CTableHeaderCell scope="col">User Name</CTableHeaderCell>
+                            <CTableHeaderCell scope="col">Email</CTableHeaderCell>
                             <CTableHeaderCell scope="col">Action</CTableHeaderCell>
                         </CTableRow>
                     </CTableHead>
