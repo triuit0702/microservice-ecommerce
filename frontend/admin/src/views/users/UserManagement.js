@@ -27,11 +27,12 @@ import ModalConfirm from '../common/ModalConfirm';
 
 import { useToast } from '../../contexts/ToastContext'
 
+import { useTranslation } from "react-i18next";
+
 export default function UserManagement() {
-    // const [users, setUsers] = useState([
-    //     { id: 1, name: 'admin', email: 'admin@gmail.com', description: 'aaa' },
-    //     { id: 2, name: 'user1', email: 'user1@gmail.com', description: 'aaa' },
-    // ])
+
+    // language
+    const { t } = useTranslation("user");
 
     const { showToast } = useToast()
 
@@ -69,8 +70,6 @@ export default function UserManagement() {
     function openAdd() {
         setVisibleModal(true);
         setEditingUser(false);
-
-        // console.log("visible: ", visibleModal); ham set state chay bat dong bo nên ko có in ra ket qua liền
     }
 
     function openEdit(item) {
@@ -106,7 +105,7 @@ export default function UserManagement() {
     const deleteUser = async () => {
         await serviceDeleteUser(deleteUserId);
         setVisibleDelete(false);
-        showToast('Xóa user thành công', 'success');
+        showToast(t("deleteSuccess"), 'success');
         loadUsers();
     }
 
@@ -142,10 +141,10 @@ export default function UserManagement() {
                 <CTable>
                     <CTableHead>
                         <CTableRow>
-                            <CTableHeaderCell scope="col">ID</CTableHeaderCell>
-                            <CTableHeaderCell scope="col">User Name</CTableHeaderCell>
-                            <CTableHeaderCell scope="col">Email</CTableHeaderCell>
-                            <CTableHeaderCell scope="col">Action</CTableHeaderCell>
+                            <CTableHeaderCell scope="col">{t("id")}</CTableHeaderCell>
+                            <CTableHeaderCell scope="col">{t("name")}</CTableHeaderCell>
+                            <CTableHeaderCell scope="col">{t("email")}</CTableHeaderCell>
+                            <CTableHeaderCell scope="col">{t("action")}</CTableHeaderCell>
                         </CTableRow>
                     </CTableHead>
                     <CTableBody>

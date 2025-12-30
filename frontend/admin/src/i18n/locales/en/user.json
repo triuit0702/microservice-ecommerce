@@ -1,0 +1,8 @@
+{
+    "title": "User Management",
+    "id": "ID",
+    "name": "Name",
+    "email": "Email",
+    "deleteSuccess": "Delete user successfully",
+    "notFound": "User not found"
+}

@@ -1,0 +1,8 @@
+{
+    "title": "Quản lý người dùng",
+    "id": "ID",
+    "name": "Tên",
+    "email": "Email",
+    "deleteSuccess": "Xóa người dùng thành công",
+    "notFound": "Không tìm thấy người dùng"
+}

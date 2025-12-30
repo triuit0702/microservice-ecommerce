@@ -5,14 +5,16 @@ import {
     CToastBody,
 } from '@coreui/react'
 
+
 const CommonToast = ({
     visible,
     setVisible,
     message,
     color = 'success',
-    title = 'Thông báo',
+    title = 'Notification',
     delay = 3000,
 }) => {
+
     return (
         <CToaster placement="top-end">
             <CToast

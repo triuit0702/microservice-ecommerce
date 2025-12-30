@@ -1,0 +1,10 @@
+{
+    "action": "Action",
+    "add": "Add",
+    "edit": "Edit",
+    "delete": "Delete",
+    "success": "Success",
+    "error": "Error",
+    "confirmDelete": "Are you sure you want to delete?",
+    "Notification": "Notification"
+}

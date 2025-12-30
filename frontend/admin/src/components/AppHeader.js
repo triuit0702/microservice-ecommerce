@@ -13,22 +13,29 @@ import {
   CNavLink,
   CNavItem,
   useColorModes,
+  CButton
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import {
   cilBell,
   cilContrast,
   cilEnvelopeOpen,
+  cilGlobeAlt,
+  cilLanguage,
   cilList,
   cilMenu,
   cilMoon,
-  cilSun,
+  cilSun
 } from '@coreui/icons'
 
 import { AppBreadcrumb } from './index'
 import { AppHeaderDropdown } from './header/index'
-
+import { Button } from '@coreui/coreui'
+import { useTranslation } from "react-i18next";
 const AppHeader = () => {
+
+  const { i18n } = useTranslation()
+
   const headerRef = useRef()
   const { colorMode, setColorMode } = useColorModes('coreui-free-react-admin-template-theme')
 
@@ -44,6 +51,13 @@ const AppHeader = () => {
     document.addEventListener('scroll', handleScroll)
     return () => document.removeEventListener('scroll', handleScroll)
   }, [])
+
+
+  const changeLanguage = (lang) => {
+    i18n.changeLanguage(lang)
+    localStorage.setItem('lang', lang)
+  }
+
 
   return (
     <CHeader position="sticky" className="mb-4 p-0" ref={headerRef}>
@@ -67,23 +81,38 @@ const AppHeader = () => {
             <CNavLink href="#">Settings</CNavLink>
           </CNavItem>
         </CHeaderNav>
+
         <CHeaderNav className="ms-auto">
-          <CNavItem>
-            <CNavLink href="#">
-              <CIcon icon={cilBell} size="lg" />
-            </CNavLink>
-          </CNavItem>
-          <CNavItem>
-            <CNavLink href="#">
-              <CIcon icon={cilList} size="lg" />
-            </CNavLink>
-          </CNavItem>
-          <CNavItem>
-            <CNavLink href="#">
-              <CIcon icon={cilEnvelopeOpen} size="lg" />
-            </CNavLink>
-          </CNavItem>
+          <CDropdown alignment="end">
+            <CDropdownToggle
+              color="light"
+              className="border-0 shadow-none d-flex align-items-center gap-2 px-3"
+            >
+              <CIcon icon={cilLanguage} size="lg" />
+              <span className="fw-medium text-uppercase" style={{ fontSize: 13 }}>
+                {i18n.language === 'vi' ? 'VI' : 'EN'}
+              </span>
+            </CDropdownToggle>
+
+            <CDropdownMenu>
+              <CDropdownItem
+                active={i18n.language === 'en'}
+                onClick={() => changeLanguage('en')}
+              >
+                English
+              </CDropdownItem>
+
+              <CDropdownItem
+                active={i18n.language === 'vi'}
+                onClick={() => changeLanguage('vi')}
+              >
+                Tiếng Việt
+              </CDropdownItem>
+            </CDropdownMenu>
+          </CDropdown>
         </CHeaderNav>
+
+
         <CHeaderNav>
           <li className="nav-item py-1">
             <div className="vr h-100 mx-2 text-body text-opacity-75"></div>
