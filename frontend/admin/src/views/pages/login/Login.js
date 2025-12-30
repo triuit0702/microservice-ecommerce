@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   CButton,
@@ -16,7 +16,36 @@ import {
 import CIcon from '@coreui/icons-react'
 import { cilLockLocked, cilUser } from '@coreui/icons'
 
+import { serviceLogin } from '../../../services/AuthService'
+
 const Login = () => {
+
+  const [userName, setUserName] = useState('');
+  const [password, setPasword] = useState('');
+  const [formLogin, setFormLogin] = useState({
+    username: '',
+    password: ''
+  })
+
+
+
+  const login = async () => {
+    console.log("thuc hiện login");
+    console.log(formLogin);
+
+    let res = await serviceLogin(formLogin);
+    console.log(res.data.data);
+
+    // 🔑 lưu JWT
+    localStorage.setItem('token', res.data.data)
+    // 👉 vào trang chính
+    window.location.href = '#/'
+  }
+
+  const handleChange = (e) => {
+    setFormLogin({ ...formLogin, [e.target.name]: e.target.value })
+  }
+
   return (
     <div className="bg-body-tertiary min-vh-100 d-flex flex-row align-items-center">
       <CContainer>
@@ -32,7 +61,13 @@ const Login = () => {
                       <CInputGroupText>
                         <CIcon icon={cilUser} />
                       </CInputGroupText>
-                      <CFormInput placeholder="Username" autoComplete="username" />
+                      <CFormInput
+                        placeholder="Username"
+                        autoComplete="username"
+                        name="username"
+                        onChange={handleChange}
+                      />
+
                     </CInputGroup>
                     <CInputGroup className="mb-4">
                       <CInputGroupText>
@@ -42,11 +77,16 @@ const Login = () => {
                         type="password"
                         placeholder="Password"
                         autoComplete="current-password"
+                        name="password"
+                        onChange={handleChange}
                       />
                     </CInputGroup>
                     <CRow>
                       <CCol xs={6}>
-                        <CButton color="primary" className="px-4">
+                        <CButton
+                          color="primary"
+                          className="px-4"
+                          onClick={() => login()}>
                           Login
                         </CButton>
                       </CCol>

@@ -17,3 +17,5 @@ export const serviceDeleteUser = (userId) => axiosClient.delete(API_URL, {
 });
 
 export const serviceUpdateUser = (signUpRequest) => axiosClient.put(API_URL, signUpRequest)
+
+
