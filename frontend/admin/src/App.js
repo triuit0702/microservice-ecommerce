@@ -10,6 +10,8 @@ import './scss/examples.scss'
 import { ToastProvider, useToast } from './contexts/ToastContext'
 import { injectToast } from './services/AxiosClient'
 
+import PrivateRoute from './layout/PrivateRoute'
+
 const ToastInjector = () => {
   const { showToast } = useToast()
   injectToast(showToast)
@@ -59,7 +61,18 @@ const App = () => {
             <Route exact path="/register" name="Register Page" element={<Register />} />
             <Route exact path="/404" name="Page 404" element={<Page404 />} />
             <Route exact path="/500" name="Page 500" element={<Page500 />} />
-            <Route path="*" name="Home" element={<DefaultLayout />} />
+            {/* <Route path="*" name="Home" element={<DefaultLayout />} /> */}
+
+            <Route
+              path="/*"
+              element={
+                <PrivateRoute>
+                  <DefaultLayout />
+                </PrivateRoute>
+              }
+            />
+
+
           </Routes>
         </Suspense>
       </HashRouter>

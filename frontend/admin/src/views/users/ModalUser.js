@@ -44,8 +44,8 @@ export default function ModalUser({
 
     return (
 
-
-        <CModal visible={visible} onClose={onClose}>
+        // dùng size xl thì bự hơn
+        <CModal visible={visible} onClose={onClose} size="lg">
             <CModalHeader>{editingUser ? 'Sửa User' : 'Thêm User'}</CModalHeader>
             <CModalBody>
                 <CFormInput

@@ -17,8 +17,12 @@ import CIcon from '@coreui/icons-react'
 import { cilLockLocked, cilUser } from '@coreui/icons'
 
 import { serviceLogin } from '../../../services/AuthService'
+import { useDispatch } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
 
 const Login = () => {
+  const dispatch = useDispatch()
+  const navigate = useNavigate()
 
   const [userName, setUserName] = useState('');
   const [password, setPasword] = useState('');
@@ -29,17 +33,20 @@ const Login = () => {
 
 
 
+  // login
   const login = async () => {
-    console.log("thuc hiện login");
-    console.log(formLogin);
-
     let res = await serviceLogin(formLogin);
     console.log(res.data.data);
 
     // 🔑 lưu JWT
     localStorage.setItem('token', res.data.data)
+
+    dispatch({
+      type: 'LOGIN_SUCCESS',
+      payload: formLogin,
+    })
     // 👉 vào trang chính
-    window.location.href = '#/'
+    navigate("/");
   }
 
   const handleChange = (e) => {
