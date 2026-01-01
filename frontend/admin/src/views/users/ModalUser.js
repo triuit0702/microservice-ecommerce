@@ -80,7 +80,7 @@ export default function ModalUser({
             </CModalBody>
 
             <CModalFooter>
-                <CButton color="secondary" >
+                <CButton color="secondary" onClick={onClose}>
                     Hủy
                 </CButton>
                 <CButton color="primary" onClick={() => saveUser(formData)} >

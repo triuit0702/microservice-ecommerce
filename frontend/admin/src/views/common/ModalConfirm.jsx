@@ -29,7 +29,7 @@ const ModalConfirm = ({ visibleDelete, message, hideModalConfirm, deleteUser }) 
             <CModalFooter>
                 <CButton
                     color="secondary"
-                    onClick={() => setVisibleDelete(false)}
+                    onClick={() => hideModalConfirm()}
                 >
                     Hủy
                 </CButton>

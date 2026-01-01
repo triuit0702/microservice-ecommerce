@@ -34,16 +34,26 @@ const Login = () => {
 
 
   // login
-  const login = async () => {
+  const login = async (e) => {
+
+    e.preventDefault();
     let res = await serviceLogin(formLogin);
-    console.log(res.data.data);
+    let data = res.data.data
 
     // 🔑 lưu JWT
-    localStorage.setItem('token', res.data.data)
+    localStorage.setItem('token', data.token)
+
+    let userDetail = {
+      id: data.id,
+      userName: formLogin.username,
+      token: data.token,
+      permissions: data.permissions
+    }
+
 
     dispatch({
       type: 'LOGIN_SUCCESS',
-      payload: formLogin,
+      payload: userDetail,
     })
     // 👉 vào trang chính
     navigate("/");
@@ -57,11 +67,11 @@ const Login = () => {
     <div className="bg-body-tertiary min-vh-100 d-flex flex-row align-items-center">
       <CContainer>
         <CRow className="justify-content-center">
-          <CCol md={8}>
+          <CCol md={5}>
             <CCardGroup>
               <CCard className="p-4">
                 <CCardBody>
-                  <CForm>
+                  <CForm onSubmit={login}>
                     <h1>Login</h1>
                     <p className="text-body-secondary">Sign In to your account</p>
                     <CInputGroup className="mb-3">
@@ -91,9 +101,10 @@ const Login = () => {
                     <CRow>
                       <CCol xs={6}>
                         <CButton
+                          type="submit"
                           color="primary"
                           className="px-4"
-                          onClick={() => login()}>
+                        >
                           Login
                         </CButton>
                       </CCol>
@@ -106,22 +117,7 @@ const Login = () => {
                   </CForm>
                 </CCardBody>
               </CCard>
-              <CCard className="text-white bg-primary py-5" style={{ width: '44%' }}>
-                <CCardBody className="text-center">
-                  <div>
-                    <h2>Sign up</h2>
-                    <p>
-                      Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod
-                      tempor incididunt ut labore et dolore magna aliqua.
-                    </p>
-                    <Link to="/register">
-                      <CButton color="primary" className="mt-3" active tabIndex={-1}>
-                        Register Now!
-                      </CButton>
-                    </Link>
-                  </div>
-                </CCardBody>
-              </CCard>
+
             </CCardGroup>
           </CCol>
         </CRow>

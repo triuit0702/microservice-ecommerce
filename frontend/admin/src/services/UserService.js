@@ -1,6 +1,6 @@
 import axios from 'axios'
 import axiosClient from './AxiosClient'
-const API_URL = 'http://localhost:9898/user/api/v1/users'
+const API_URL = '/user/api/v1/users'
 
 
 
