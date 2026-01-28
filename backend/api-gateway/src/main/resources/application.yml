@@ -13,27 +13,27 @@ spring:
         - id: identity-service
           uri: lb://IDENTITY-SERVICE
           predicates:
-            - Path=/user/api/v1/**
+            - Path=/api/v1/user/**
 
         # Route cho Product Service - Đọc dữ liệu
         - id: product-service-read
           uri: lb://PRODUCT-SERVICE
           predicates:
-            - Path=/api/v1/products/**
+            - Path=/api/v1/product/**
             - Method=GET
 
         # Route cho Product Service - Ghi dữ liệu
         - id: product-service-write
           uri: lb://PRODUCT-SERVICE
           predicates:
-            - Path=/api/v1/products/**
+            - Path=/api/v1/product/**
             - Method=POST,PUT,DELETE,OPTIONS
           filters:
             - name: AuthenticationFilter
             - name: RoleBasedAccessFilter
               args:
-                requiredRoles: ADMIN, EMPLOYEE
-                requiredPermissions: MANAGE_PRODUCTS
+                requiredRoles: ADMINISTRATOR, EMPLOYEE
+                #requiredPermissions: MANAGE_PRODUCTS
 
         # Route cho Order Service - Đặt hàng
         - id: order-place

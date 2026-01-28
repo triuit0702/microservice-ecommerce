@@ -1,169 +1,264 @@
-import React, { useState } from 'react'
-import {
-    CCard,
-    CCardBody,
-    CCardHeader,
-    CForm,
-    CFormLabel,
-    CFormInput,
-    CFormTextarea,
-    CButton,
-    CModal,
-    CModalHeader,
-    CModalTitle,
-    CModalBody,
-    CModalFooter,
-    CFormSelect,
-} from '@coreui/react'
+import React, { useEffect, useState } from 'react';
+import { CCard, CCardBody, CForm, CFormLabel, CFormInput, CFormTextarea, CButton, CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell, CCardHeader, CFormSelect } from '@coreui/react';
+import VariantModal from './VariantModal';
+import { serviceGetAllCategories } from '../../services/CategoryService';
+import { createProduct } from '../../services/ProductService';
+//import { createProduct } from '../services/productService';
 
-const ProductForm = ({ visible, editingProduct }) => {
-    const [name, setName] = useState('')
-    const [price, setPrice] = useState('')
-    const [description, setDescription] = useState('')
+const ProductForm = ({ visibleProductForm }) => {
+    const [product, setProduct] = useState({
+        name: '',
+        description: '',
+        imageFile: '',
+        imageName: '',
+        price: '',
+        discount: '',
+        categoryIds: [],
+        variants: [],
+    });
 
-    const [formData, setFormData] = useState({ name: "", price: "" });
+    const [categories, setCategories] = useState([]);
+
+    const [modalVisible, setModalVisible] = useState(false);
+    const [editingVariantIndex, setEditingVariantIndex] = useState(null);
+
+    const [imagePreview, setImagePreview] = useState(null);
 
 
-    const onClose = () => {
+    useEffect(() => {
 
+
+        serviceGetAllCategories().then((res) => {
+            let data = res.data.data;
+            setCategories(data);
+        })
+    }, []);
+
+
+
+    const handleProductChange = (e) => {
+        setProduct({ ...product, [e.target.name]: e.target.value });
+    };
+
+    const handleSaveVariant = (variant) => {
+        console.log("truoc khi update variant");
+        console.log(variant);
+        const updatedVariants = [...product.variants];
+        if (editingVariantIndex !== null) {
+            updatedVariants[editingVariantIndex] = variant;
+            setEditingVariantIndex(null);
+        } else {
+            updatedVariants.push(variant);
+        }
+        setProduct({ ...product, variants: updatedVariants });
+        setModalVisible(false);
+
+        console.log(updatedVariants);
+    };
+
+    const handleEditVariant = (index) => {
+        setEditingVariantIndex(index);
+        setModalVisible(true);
+    };
+
+    const handleDeleteVariant = (index) => {
+        const updatedVariants = [...product.variants];
+        updatedVariants.splice(index, 1);
+        setProduct({ ...product, variants: updatedVariants });
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        // console.log(product);
+        const formData = buildFormData(product);
+        console.log(formData);
+        try {
+            await createProduct(formData);
+            alert('Product created successfully!');
+            setProduct({
+                name: '',
+                description: '',
+                imageFile: '',
+                imageName: '',
+
+                price: '',
+                discount: '',
+                categoryIds: [],
+                variants: [],
+            });
+        } catch (error) {
+            console.error(error);
+            alert('Error creating product');
+        }
+    };
+
+    const buildFormData = (obj) => {
+        const formData = new FormData();
+
+        console.log(obj);
+        Object.entries(obj).forEach(([key, value]) => {
+            if (value === null || value === undefined) return;
+
+            // file
+            if (value instanceof File) {
+                formData.append(key, value);
+                return;
+            }
+            if (typeof value === "object" && (key == "imageUrl" || key == "previewUrl")) {
+                console.log("key: " + key);
+                return;
+            }
+            // array / object
+            if (typeof value === "object") {
+                formData.append(key, JSON.stringify(value));
+                return;
+            }
+
+            // primitive
+            formData.append(key, value);
+        });
+
+        return formData;
+    };
+
+    const addVariant = () => {
+        setEditingVariantIndex(null);
+        setModalVisible(true);
 
     }
 
+    const uploadMainImage = (e) => {
+        const { name, files } = e.target;
+        const value = e.target.value;
 
-    const handleSubmit = (e) => {
-        e.preventDefault()
+        if (name === "imageUrl" && files && files[0]) {
+            const file = files[0];
 
-        // Kiểm tra dữ liệu cơ bản
-        if (!name || !price) {
-            alert('Vui lòng nhập tên và giá sản phẩm')
-            return
+
+            setProduct({
+                ...product,
+                imageName: value,
+                imageFile: file, // lưu file nếu cần submit
+            });
+
+            // setProduct({ ...product, [e.target.name]: e.target.value });
+
+            // // tạo preview
+            setImagePreview(URL.createObjectURL(file));
         }
+    };
 
-        const newProduct = {
-            name,
-            price: parseFloat(price),
-            description,
-        }
-
-        // Gửi dữ liệu lên parent hoặc API
-        onSubmit(newProduct)
-
-        // Reset form
-        setName('')
-        setPrice('')
-        setDescription('')
-    }
 
     return (
-        <CModal visible={visible} onClose={() => setModalVisible(false)} size="lg">
-            <CModalHeader>
-                <CModalTitle>{editingProduct ? "Edit Product" : "Add Product"}</CModalTitle>
-            </CModalHeader>
+        <CCard visible={visibleProductForm}>
+            <CCardHeader >
+                <h3>Add Product</h3>
+            </CCardHeader>
+            <CCardBody>
 
+                <CForm onSubmit={handleSubmit}>
+                    <CFormLabel>Name</CFormLabel>
+                    <CFormInput name="name" value={product.name} onChange={handleProductChange} required />
 
+                    <CFormLabel>Description</CFormLabel>
+                    <CFormTextarea name="description" value={product.description} onChange={handleProductChange} />
 
+                    <CFormLabel>Image URL</CFormLabel>
+                    <CFormInput name="imageUrl" type="file" value={product.imageName} onChange={(e) => uploadMainImage(e)} />
 
-            <CModalBody style={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: '10px' }}>
-                {/* Product Name */}
-                <div className="mb-3">
-                    <label htmlFor="product-name" className="form-label">Product Name</label>
-                    <CFormInput
-                        id="product-name"
-                        placeholder="Enter product name"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    />
-                </div>
+                    {imagePreview && (
+                        <div style={{ marginTop: "10px" }}>
+                            <img
+                                src={imagePreview}
+                                alt="Preview"
+                                style={{
+                                    width: "150px",
+                                    height: "150px",
+                                    objectFit: "cover",
+                                    borderRadius: "8px",
+                                    border: "1px solid #ddd",
+                                }}
+                            />
+                        </div>
+                    )}
 
-                {/* Price */}
-                <div className="mb-3">
-                    <label htmlFor="product-price" className="form-label">Price</label>
-                    <CFormInput
-                        id="product-price"
-                        type="number"
-                        placeholder="Enter price"
-                        value={formData.price}
-                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    />
-                </div>
+                    <CFormLabel>Price</CFormLabel>
+                    <CFormInput type="number" name="price" value={product.price} onChange={handleProductChange} required />
 
-                {/* Description */}
-                <div className="mb-3">
-                    <label htmlFor="product-description" className="form-label">Description</label>
-                    <CFormTextarea
-                        id="product-description"
-                        placeholder="Enter description"
-                        value={formData.description}
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    />
-                </div>
+                    <CFormLabel>Discount</CFormLabel>
+                    <CFormInput type="number" name="discount" value={product.discount} onChange={handleProductChange} />
 
-                {/* Category */}
-                <div className="mb-3">
-                    <label htmlFor="product-category" className="form-label">Category</label>
+                    <CFormLabel>Category IDs (comma separated)</CFormLabel>
+                    {/* <CFormInput
+                        name="categoryIds"
+                        value={product.categoryIds.join(',')}
+                        onChange={(e) => setProduct({ ...product, categoryIds: e.target.value.split(',') })}
+                    /> */}
+
                     <CFormSelect
                         id="product-category"
-                        value={formData.category}
-                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                        name="category"
+                        value={product.category}
+                        onChange={(e) => setProduct({ ...product, category: e.target.value })}
                     >
                         <option value="">Select Category</option>
-                        <option value="electronics">Electronics</option>
+                        {categories && categories.length > 0 && categories.map(cat => (
+                            <option key={cat.id} value={cat.id}>
+                                {cat.name}
+                            </option>
+                        ))}
+
+
+
+                        {/* <option value="electronics">Electronics</option>
                         <option value="clothing">Clothing</option>
-                        <option value="books">Books</option>
+                        <option value="books">Books</option> */}
                     </CFormSelect>
-                </div>
 
-                {/* Stock Quantity */}
-                <div className="mb-3">
-                    <label htmlFor="product-stock" className="form-label">Stock Quantity</label>
-                    <CFormInput
-                        id="product-stock"
-                        type="number"
-                        placeholder="Enter stock quantity"
-                        value={formData.stock}
-                        onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                    />
-                </div>
+                    <hr />
+                    <h5>Product Variants</h5>
+                    <CTable>
+                        <CTableHead>
+                            <CTableRow>
+                                <CTableHeaderCell>SKU</CTableHeaderCell>
+                                <CTableHeaderCell>Color</CTableHeaderCell>
+                                <CTableHeaderCell>Size</CTableHeaderCell>
+                                <CTableHeaderCell>Price</CTableHeaderCell>
+                                <CTableHeaderCell>Stock</CTableHeaderCell>
+                                <CTableHeaderCell>Actions</CTableHeaderCell>
+                            </CTableRow>
+                        </CTableHead>
+                        <CTableBody>
+                            {product.variants.map((v, idx) => (
+                                <CTableRow key={idx}>
+                                    <CTableDataCell>{v.sku}</CTableDataCell>
+                                    <CTableDataCell>{v.color}</CTableDataCell>
+                                    <CTableDataCell>{v.size}</CTableDataCell>
+                                    <CTableDataCell>{v.price}</CTableDataCell>
+                                    <CTableDataCell>{v.stock}</CTableDataCell>
+                                    <CTableDataCell>
+                                        <CButton size="sm" color="info" onClick={() => handleEditVariant(idx)}>Edit</CButton>{' '}
+                                        <CButton size="sm" color="danger" onClick={() => handleDeleteVariant(idx)}>Delete</CButton>
+                                    </CTableDataCell>
+                                </CTableRow>
+                            ))}
+                        </CTableBody>
+                    </CTable>
 
-                {/* Image Upload */}
-                <div className="mb-3">
-                    <label htmlFor="product-image" className="form-label">Product Image</label>
-                    <CFormInput
-                        type="file"
-                        id="product-image"
-                        onChange={(e) => {
-                            const file = e.target.files[0];
-                            setFormData({ ...formData, image: file });
+                    <CButton color="secondary" style={{ marginTop: '10px' }} onClick={() => addVariant()}>Add Variant</CButton>
+                    <br />
+                    <CButton color="primary" type="submit" style={{ marginTop: '20px' }}>Create Product</CButton>
+                </CForm>
 
-                            if (file) {
-                                const reader = new FileReader();
-                                reader.onload = (ev) => setFormData(prev => ({ ...prev, imagePreview: ev.target.result }));
-                                reader.readAsDataURL(file);
-                            }
-                        }}
-                    />
-                    {formData.imagePreview && (
-                        <img
-                            src={formData.imagePreview}
-                            alt="Preview"
-                            style={{ marginTop: '10px', maxWidth: '100%', borderRadius: '6px' }}
-                        />
-                    )}
-                </div>
+                <VariantModal
+                    visible={modalVisible}
+                    onClose={() => setModalVisible(false)}
+                    onSave={handleSaveVariant}
+                    variantData={editingVariantIndex !== null ? product.variants[editingVariantIndex] : null}
+                />
+            </CCardBody>
+        </CCard>
+    );
+};
 
-            </CModalBody>
-            <CModalFooter>
-                <CButton color="secondary" onClick={() => setModalVisible(false)}>Cancel</CButton>
-                <CButton color="primary" onClick={handleSubmit}>{editingProduct ? "Update" : "Add"}</CButton>
-            </CModalFooter>
-        </CModal>
-
-
-
-
-
-
-    )
-}
-
-export default ProductForm
+export default ProductForm;

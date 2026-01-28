@@ -75,6 +75,7 @@ export default function UserManagement() {
 
     const loadUsers = async () => {
         let res = await serviceGetAllUser(page, pageSize);
+
         const usersWithPermission = res.data.content.map(user => ({
             ...user,
             permissions: user.roles?.map(r => r.authority).join(", ")
@@ -176,7 +177,6 @@ export default function UserManagement() {
                 editingUser={editingUser}
                 hideModal={() => setVisibleModal(false)}
                 userDetail={userDetail}
-                setUserDetail={setUserDetail}
                 saveUser={handleSave}
             />
 

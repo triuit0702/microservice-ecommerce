@@ -24,18 +24,28 @@ public class ProductVariant {
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
-    private BigDecimal price;
+
 
     private BigDecimal discount;
-
+// SKU là mã định danh DUY NHẤT cho từng sản phẩm / từng variant trong kho
     @Column(nullable = false, unique = true)
     private String sku;
 
-    @Column(nullable = false)
-    private Integer stockQuantity;
+    private String color;
+    private String size;
+    private BigDecimal price;
 
     @Column(nullable = false)
+    private Integer stockQuantity;
+    // image url ???
+
+    private String material;
+
+    //@Column(nullable = false)
     private Integer reorderLevel;
+
+    private String imagePublicId;
+    private String imageUrl;
 
     @OneToMany(mappedBy = "productVariant", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<AttributeValue> attributeValues = new HashSet<>();

@@ -8,7 +8,6 @@ export default function ModalUser({
     editingUser,
     hideModal,
     userDetail,
-    setUserDetail,
     saveUser
 }) {
 

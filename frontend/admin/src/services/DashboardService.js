@@ -1,3 +1,3 @@
 import axiosClient from './AxiosClient'
 
-export const serviceGetDashboard = () => axiosClient.get(`/user/api/v1/dashboard`);
+export const serviceGetDashboard = () => axiosClient.get(`/api/v1/user/dashboard`);

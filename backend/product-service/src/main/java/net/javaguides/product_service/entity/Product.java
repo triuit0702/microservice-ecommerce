@@ -31,6 +31,7 @@ public class Product extends AbstractEntity {
 
     @Column(columnDefinition = "LONGTEXT")
     private String imageUrl;
+    private String imagePublicId;
 
     private BigDecimal price;
 

@@ -14,7 +14,9 @@ import net.javaguides.identity_service.entity.UserCredential;
 import net.javaguides.identity_service.exception.AuthException;
 import net.javaguides.identity_service.service.AuthService;
 import net.javaguides.identity_service.service.UserService;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -24,13 +26,14 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("api/v1/auth")
+@RequestMapping("api/v1/user/auth")
 @RequiredArgsConstructor
 public class AuthController {
     private final AuthService authService;
@@ -67,6 +70,16 @@ public class AuthController {
                         .flatMap(role -> role.getPermissions().stream())
                         .map(Permission::getName)
                         .collect(Collectors.toSet());
+
+                // set cookie
+                ResponseCookie cookie = ResponseCookie.from("token", generateToken)
+                        .httpOnly(true)
+                        .path("/")
+                        .maxAge(Duration.ofMinutes(15))
+                        .build();
+                response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
+
 
 
                 LoginResponse loginResponse = new LoginResponse(generateToken, permissions);

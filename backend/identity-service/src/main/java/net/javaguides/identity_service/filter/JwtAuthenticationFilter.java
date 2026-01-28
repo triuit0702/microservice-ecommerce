@@ -34,9 +34,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws IOException, ServletException {
 
-        String jwtToken = extractTokenFromRequest(request);
+        //String jwtToken = extractTokenFromRequest(request);
         // Lấy JWT token từ cookie
-        //String jwtToken = extractTokenFromCookies(request);
+        String jwtToken = extractTokenFromCookies(request);
 
         if (jwtToken != null) {
             Claims claims = Jwts.parser()

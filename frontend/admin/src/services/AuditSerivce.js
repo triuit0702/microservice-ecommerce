@@ -1,3 +1,3 @@
 import axiosClient from './AxiosClient'
 
-export const getRecentAuditLogs = () => axiosClient.get(`/user/api/v1/audit-logs/recent`);
+export const getRecentAuditLogs = () => axiosClient.get(`/api/v1/user/audit-logs/recent`);

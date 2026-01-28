@@ -3,6 +3,7 @@ import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javaguides.product_service.dto.UploadResponse;
 import org.imgscalr.Scalr;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -12,6 +13,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Map;
+import java.util.UUID;
 import javax.imageio.ImageIO;
 
 @Service
@@ -50,6 +52,57 @@ public class CloudinaryService {
             log.error("IO Exception during file upload", e);
         } catch (Exception e) {
             log.error("Unexpected exception during file upload", e);
+        }
+    }
+
+    // rename image: change folder image
+    public String renameImage(String oldPublicId, String newPublicId) {
+        try {
+            Map result = cloudinary.uploader().rename(oldPublicId, newPublicId, ObjectUtils.emptyMap());
+
+            return (String) result.get("public_id");
+        } catch (IOException e) {
+            throw new RuntimeException("Rename image failed", e);
+        }
+    }
+
+    // get url by public id
+    public String getUrlByPublicId(String publicId) {
+        return cloudinary.url().secure(true).generate(publicId);
+    }
+
+    public UploadResponse uploadImageToFolder(MultipartFile file, String folder, String publicId) throws IOException {
+
+        // Validate
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("File is empty");
+        }
+
+
+        Map<String, Object> result = cloudinary.uploader().upload(
+                file.getBytes(),
+                ObjectUtils.asMap(
+                        "folder", folder,
+                        "public_id", publicId,
+                        "tags", "product",
+                        "resource_type", "image"
+                )
+        );
+
+        return UploadResponse.builder()
+                .url((String) result.get("secure_url"))
+                .publicId((String) result.get("public_id"))
+                .build();
+    }
+
+    public void deleteImage(String publicId) {
+        try {
+            cloudinary.uploader().destroy(
+                    publicId,
+                    ObjectUtils.asMap("resource_type", "image")
+            );
+        } catch (Exception e) {
+            log.error("Failed to delete image: {}", publicId, e);
         }
     }
 }

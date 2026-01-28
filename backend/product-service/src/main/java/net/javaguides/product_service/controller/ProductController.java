@@ -1,6 +1,9 @@
 package net.javaguides.product_service.controller;
 
 
+import com.fasterxml.jackson.core.ObjectCodec;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -8,37 +11,43 @@ import net.javaguides.common_lib.dto.ApiResponse;
 import net.javaguides.common_lib.dto.product.ProductDTO;
 import net.javaguides.product_service.dto.product.CreateProductRequestDto;
 import net.javaguides.product_service.dto.ProductStockResponse;
+import net.javaguides.product_service.dto.product.ProductRequest;
 import net.javaguides.product_service.dto.product.ProductResponseDto;
 import net.javaguides.product_service.dto.product.UpdateProductRequestDto;
+import net.javaguides.product_service.dto.product_variant.ProductVariantDto;
 import net.javaguides.product_service.exception.ProductException;
 import net.javaguides.product_service.service.ProductService;
+import org.apache.commons.lang.StringUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
 @RestController
-@RequestMapping("api/v1/products")
+@RequestMapping("api/v1/product/products")
 @RequiredArgsConstructor
 public class ProductController {
     private final ProductService productService;
-    @PostMapping
-    public ResponseEntity<ApiResponse<?>> saveProduct(@ModelAttribute @Valid CreateProductRequestDto createProductRequestDto) {
-        try {
-            ProductResponseDto createdProductDto = productService.saveProduct(createProductRequestDto);
-            ApiResponse<ProductResponseDto> apiResponse = new ApiResponse<>(createdProductDto, HttpStatus.CREATED.value());
-            return new ResponseEntity<>(apiResponse, HttpStatus.CREATED);
-        } catch (Exception e) {
-            ApiResponse<String> response = new ApiResponse<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value());
-            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
+//    @PostMapping
+//    public ResponseEntity<ApiResponse<?>> saveProduct(@ModelAttribute @Valid CreateProductRequestDto createProductRequestDto) {
+//        try {
+//            ProductResponseDto createdProductDto = productService.saveProduct(createProductRequestDto);
+//            ApiResponse<ProductResponseDto> apiResponse = new ApiResponse<>(createdProductDto, HttpStatus.CREATED.value());
+//            return new ResponseEntity<>(apiResponse, HttpStatus.CREATED);
+//        } catch (Exception e) {
+//            ApiResponse<String> response = new ApiResponse<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value());
+//            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+//        }
+//    }
 
     @GetMapping
     public ResponseEntity<ApiResponse<?>> getProductList(@RequestParam(defaultValue = "0") int page,
@@ -129,5 +138,29 @@ public class ProductController {
         }
     }
 
+
+
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Void> create(@ModelAttribute ProductRequest request,
+                                       @RequestParam(required = false) MultipartFile imageFile)
+            throws Exception {
+
+        System.out.println("kiem tra: "+ request);
+        List<ProductVariantDto> variants = new ArrayList<>();
+
+        if (StringUtils.isNotBlank(request.getVariants())) {
+            try {
+                variants = new ObjectMapper().readValue(
+                        request.getVariants(),
+                        new TypeReference<List<ProductVariantDto>>() {}
+                );
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+       productService.createProduct(request, variants, imageFile);
+        return ResponseEntity.ok().build();
+    }
 
 }

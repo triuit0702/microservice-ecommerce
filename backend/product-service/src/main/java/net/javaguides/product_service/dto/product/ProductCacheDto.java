@@ -21,6 +21,8 @@ public class ProductCacheDto {
     private String description;
     private String imageUrl;
     private BigDecimal price;
+    private BigDecimal discount;
+    private String category;
     private int version;
     private List<ProductVariantResponseDto> variants;
     private Set<CategoryResponseDto> categories;

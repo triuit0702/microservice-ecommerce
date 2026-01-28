@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class UserPolicy {
     public boolean canCreate(Authentication auth) {
-        return hasPermission(auth, "USER:CREATE");
+        return hasPermission(auth, "USER_CREATE");
     }
 
     private boolean hasPermission(Authentication auth, String permission) {

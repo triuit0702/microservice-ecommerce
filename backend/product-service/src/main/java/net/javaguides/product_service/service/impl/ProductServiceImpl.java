@@ -1,19 +1,21 @@
 package net.javaguides.product_service.service.impl;
 
+import com.cloudinary.utils.ObjectUtils;
+import jakarta.ws.rs.core.Variant;
 import lombok.RequiredArgsConstructor;
 import net.javaguides.common_lib.dto.product.ProductDTO;
 import net.javaguides.common_lib.dto.product.ProductEvent;
 import net.javaguides.common_lib.dto.product.ProductMethod;
 import net.javaguides.product_service.dto.*;
-import net.javaguides.product_service.dto.product.CreateProductRequestDto;
-import net.javaguides.product_service.dto.product.ProductCacheDto;
-import net.javaguides.product_service.dto.product.ProductResponseDto;
-import net.javaguides.product_service.dto.product.UpdateProductRequestDto;
+import net.javaguides.product_service.dto.product.*;
+import net.javaguides.product_service.dto.product_variant.ProductVariantDto;
+import net.javaguides.product_service.entity.ProductVariant;
 import net.javaguides.product_service.redis.ProductRedis;
 import net.javaguides.product_service.entity.Product;
 import net.javaguides.product_service.exception.ProductException;
 import net.javaguides.product_service.kafka.producer.ProductProducer;
 import net.javaguides.product_service.repository.ProductRepository;
+import net.javaguides.product_service.repository.ProductVariantRepository;
 import net.javaguides.product_service.service.CloudinaryService;
 import net.javaguides.product_service.service.ProductService;
 import net.javaguides.product_service.specification.ProductSpecification;
@@ -29,13 +31,12 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
@@ -46,6 +47,7 @@ public class ProductServiceImpl implements ProductService {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProductServiceImpl.class);
     private final ProductProducer productProducer;
     private final ProductRepository productRepository;
+    private final ProductVariantRepository productVariantRepository;
     private final ModelMapper modelMapper;
     private final ProductRedis productDAO;
     private final CloudinaryService cloudinaryService;
@@ -75,7 +77,7 @@ public class ProductServiceImpl implements ProductService {
             Product savedProduct = productRepository.save(product);
 
             // Lưu sản phẩm vào cache
-            productDAO.save(savedProduct);
+            //productDAO.save(savedProduct);
 
             // Upload ảnh lên Cloudinary (nên thực hiện sau khi lưu sản phẩm thành công)
             cloudinaryService.uploadFile(createProductRequestDto.getMultipartFile(), publicId);
@@ -241,4 +243,74 @@ public class ProductServiceImpl implements ProductService {
         LOGGER.info("ProductServiceImpl.getProductById(): cache insert >> " + product.getId());
     }
 
+
+    @Transactional
+    public void createProduct(ProductRequest req, List<ProductVariantDto>  variants,  MultipartFile image) throws IOException {
+        UploadResponse uploadResponse = null;
+        try {
+            // 1. Save product trước để có productId
+            Product product = new Product();
+            product.setId(UUID.randomUUID().toString());
+            product.setName(req.getName());
+            product.setDescription(req.getDescription());
+            product.setPrice(req.getPrice());
+            product.setDiscount(req.getDiscount());
+
+            // upload main image product
+            uploadResponse = cloudinaryService.uploadImageToFolder(image, "products/"  , product.getId());
+            product.setImageUrl(uploadResponse.getUrl());
+
+            product = productRepository.save(product);
+
+            if (CollectionUtils.isEmpty(variants)) {
+                return;
+            }
+
+            List<ProductVariant> productVariantList = new ArrayList<>();
+            List<String> oldPublicIds = new ArrayList<>();
+            // 2. Loop variants
+            for (ProductVariantDto vReq : variants) {
+
+                ProductVariant variant = new ProductVariant();
+                variant.setSku(vReq.getSku());
+                variant.setPrice(vReq.getPrice());
+                variant.setStockQuantity(vReq.getStockQuantity());
+                variant.setProduct(product);
+
+                productVariantList.add(variant);
+                oldPublicIds.add(vReq.getImagePublicId());
+            }
+
+            // save list variant to DB
+            List<ProductVariant> savedVariants = productVariantRepository.saveAllAndFlush(productVariantList);
+            List<Long> ids = savedVariants.stream().map(ProductVariant::getId).toList();
+            for (int i=0; i < savedVariants.size(); i ++) {
+                ProductVariant variant = savedVariants.get(i);
+                String oldPublicId = oldPublicIds.get(i);
+
+                // 3. Rename ảnh temp → permanent
+                String newPublicId =
+                        "products/" + product.getId()
+                                + "/variants/" + variant.getId();
+                cloudinaryService.renameImage(
+                        oldPublicId,
+                        newPublicId
+                );
+
+                variant.setImagePublicId(newPublicId);
+                variant.setImageUrl(cloudinaryService.getUrlByPublicId(newPublicId));
+            }
+
+            // update db
+            productVariantRepository.saveAll(savedVariants);
+        } catch (Exception e) {
+            // 3. Rollback ảnh nếu DB fail
+            if (uploadResponse != null) {
+                cloudinaryService.deleteImage(uploadResponse.getPublicId());
+            }
+
+            throw e; // cho transaction rollback DB
+        }
+
+    }
 }

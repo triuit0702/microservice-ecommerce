@@ -11,23 +11,18 @@ import {
     CTableHeaderCell,
     CTableBody,
     CTableDataCell,
-    CModal,
-    CModalHeader,
-    CModalTitle,
-    CModalBody,
-    CModalFooter,
-    CFormInput,
+
 } from "@coreui/react";
 import { getProducts, createProduct, updateProduct, deleteProduct } from "../../services/ProductService";
 import { useSelector } from "react-redux";
-import ProductForm from "./ProductForm";
+import { useNavigate } from 'react-router-dom';
 
 const ProductList = () => {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
-    const [editingProduct, setEditingProduct] = useState(null);
-    const [formData, setFormData] = useState({ name: "", price: "" });
+    //const [editingProduct, setEditingProduct] = useState(null);
+    const navigate = useNavigate();
 
 
     // use redux get auth user
@@ -38,7 +33,7 @@ const ProductList = () => {
         setLoading(true);
         try {
             const res = await getProducts();
-            setProducts(res.data.data);
+            setProducts(res.data.data.content);
         } catch (err) {
             console.error(err);
         } finally {
@@ -51,15 +46,16 @@ const ProductList = () => {
     }, []);
 
     const openAddModal = () => {
-        setEditingProduct(null);
-        setFormData({ name: "", price: "" });
         setModalVisible(true);
     };
 
     const openEditModal = (product) => {
-        setEditingProduct(product);
-        setFormData({ name: product.name, price: product.price });
-        setModalVisible(true);
+
+        // setEditingProduct(product);
+        // setFormData({ name: product.name, price: product.price });
+        // setModalVisible(true);
+
+        navigate(`/products/edit/${product.id}`)
     };
 
     const handleDelete = async (id) => {
@@ -85,12 +81,25 @@ const ProductList = () => {
 
     return (
         <CCard>
+            {/* <ProductForm
+                visible={modalVisible}
+                editingProduct={false}
+                hideModal={() => setModalVisible(false)}
+            /> */}
+
+            {/* <AddProduct
+                visibleProductForm={false}
+                editingProduct={false}
+                hideModal={() => setModalVisible(false)}
+            /> */}
+
+
             <CCardHeader className="d-flex justify-content-between align-items-center">
                 <h3>Products</h3>
                 {/* {permissions.includes("CREATE_PRODUCT") && (
                     <CButton color="primary" onClick={openAddModal}>Add Product</CButton>
                 )} */}
-                <CButton color="primary" onClick={openAddModal}>Add Product</CButton>
+                <CButton color="primary" onClick={() => navigate('/products/add')}>Add Product</CButton>
 
             </CCardHeader>
             <CCardBody>
@@ -100,9 +109,7 @@ const ProductList = () => {
                             <CTableHeaderCell>ID</CTableHeaderCell>
                             <CTableHeaderCell>Name</CTableHeaderCell>
                             <CTableHeaderCell>Price</CTableHeaderCell>
-                            {(permissions.includes("EDIT_PRODUCT") || permissions.includes("DELETE_PRODUCT")) && (
-                                <CTableHeaderCell>Actions</CTableHeaderCell>
-                            )}
+                            <CTableHeaderCell>Actions</CTableHeaderCell>
                         </CTableRow>
                     </CTableHead>
                     <CTableBody>
@@ -111,16 +118,10 @@ const ProductList = () => {
                                 <CTableDataCell>{product.id}</CTableDataCell>
                                 <CTableDataCell>{product.name}</CTableDataCell>
                                 <CTableDataCell>{product.price}</CTableDataCell>
-                                {(permissions.includes("EDIT_PRODUCT") || permissions.includes("DELETE_PRODUCT")) && (
-                                    <CTableDataCell>
-                                        {permissions.includes("EDIT_PRODUCT") && (
-                                            <CButton size="sm" color="warning" onClick={() => openEditModal(product)}>Edit</CButton>
-                                        )}
-                                        {permissions.includes("DELETE_PRODUCT") && (
-                                            <CButton size="sm" color="danger" onClick={() => handleDelete(product.id)}>Delete</CButton>
-                                        )}
-                                    </CTableDataCell>
-                                )}
+                                <CTableDataCell>
+                                    <CButton className="me-2" size="sm" color="warning" onClick={() => openEditModal(product)}>Edit</CButton>
+                                    <CButton size="sm" color="danger" onClick={() => handleDelete(product.id)}>Delete</CButton>
+                                </CTableDataCell>
                             </CTableRow>
                         ))) : (
                             <CTableRow>
@@ -136,10 +137,7 @@ const ProductList = () => {
 
 
 
-            <ProductForm
-                visible={modalVisible}
-                editingProduct={editingProduct}
-            />
+
 
 
         </CCard>

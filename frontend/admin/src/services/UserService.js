@@ -1,6 +1,5 @@
-import axios from 'axios'
 import axiosClient from './AxiosClient'
-const API_URL = '/user/api/v1/users'
+const API_URL = '/api/v1/user'
 
 
 
