@@ -17,6 +17,12 @@ public class ProductVariantResponseDto {
     private Set<AttributeValueResponseDto> attributeValues = new HashSet<>();
     private BigDecimal price;
     private String sku;
+
+    private String color;
+    private String size;
+    private String material;
     private Integer stockQuantity;
     private Integer reorderLevel;
+    private String imagePublicId;
+    private String imageUrl;
 }

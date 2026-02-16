@@ -1,12 +1,42 @@
-import React, { useEffect, useState } from 'react';
-import { CCard, CCardBody, CForm, CFormLabel, CFormInput, CFormTextarea, CButton, CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell, CCardHeader, CFormSelect } from '@coreui/react';
+import { useEffect, useState } from 'react';
+import {
+    CCard,
+    CCardBody,
+    CForm,
+    CFormLabel,
+    CFormInput,
+    CFormTextarea,
+    CButton,
+    CTable,
+    CTableHead,
+    CTableRow,
+    CTableHeaderCell,
+    CTableBody,
+    CTableDataCell,
+    CCardHeader,
+    CFormSelect,
+    CFormCheck
+} from '@coreui/react';
 import VariantModal from './VariantModal';
 import { serviceGetAllCategories } from '../../services/CategoryService';
-import { createProduct } from '../../services/ProductService';
-//import { createProduct } from '../services/productService';
+import { createProduct, getProductById, updateProduct } from '../../services/ProductService';
+import { useParams } from 'react-router-dom'
+
+import './product.css'
+
+import {
+    CRow,
+    CCol
+} from '@coreui/react'
 
 const ProductForm = ({ visibleProductForm }) => {
+
+
+
+
+
     const [product, setProduct] = useState({
+        id: '',
         name: '',
         description: '',
         imageFile: '',
@@ -15,6 +45,7 @@ const ProductForm = ({ visibleProductForm }) => {
         discount: '',
         categoryIds: [],
         variants: [],
+        version: 0
     });
 
     const [categories, setCategories] = useState([]);
@@ -24,6 +55,9 @@ const ProductForm = ({ visibleProductForm }) => {
 
     const [imagePreview, setImagePreview] = useState(null);
 
+    // get productId when edit product
+    const { id } = useParams();
+
 
     useEffect(() => {
 
@@ -32,6 +66,19 @@ const ProductForm = ({ visibleProductForm }) => {
             let data = res.data.data;
             setCategories(data);
         })
+
+        if (id) {
+            // get product detail when edit
+            getProductById(id)
+                .then(res => {
+                    console.log(res.data.data);
+                    setProduct(res.data.data);
+                    setImagePreview(res.data.data.imageUrl);
+                })
+                .catch(err => console.error(err));
+        }
+
+
     }, []);
 
 
@@ -41,8 +88,6 @@ const ProductForm = ({ visibleProductForm }) => {
     };
 
     const handleSaveVariant = (variant) => {
-        console.log("truoc khi update variant");
-        console.log(variant);
         const updatedVariants = [...product.variants];
         if (editingVariantIndex !== null) {
             updatedVariants[editingVariantIndex] = variant;
@@ -69,13 +114,18 @@ const ProductForm = ({ visibleProductForm }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        // console.log(product);
         const formData = buildFormData(product);
-        console.log(formData);
         try {
-            await createProduct(formData);
-            alert('Product created successfully!');
+            if (product.id) {
+                await updateProduct(product.id, formData);
+                alert('Product updated successfully!');
+            } else {
+                await createProduct(formData);
+                alert('Product created successfully!');
+            }
+
             setProduct({
+                id: '',
                 name: '',
                 description: '',
                 imageFile: '',
@@ -85,10 +135,11 @@ const ProductForm = ({ visibleProductForm }) => {
                 discount: '',
                 categoryIds: [],
                 variants: [],
+                version: 0
             });
         } catch (error) {
             console.error(error);
-            alert('Error creating product');
+            alert('Error save  product');
         }
     };
 
@@ -104,11 +155,23 @@ const ProductForm = ({ visibleProductForm }) => {
                 formData.append(key, value);
                 return;
             }
+
+            if (key === "variants") {
+                formData.append(key, JSON.stringify(value));
+                return;
+            }
+            // array 
+            if (Array.isArray(value)) {
+                value.forEach(v => {
+                    formData.append(key, v);
+                });
+                return;
+            }
             if (typeof value === "object" && (key == "imageUrl" || key == "previewUrl")) {
                 console.log("key: " + key);
                 return;
             }
-            // array / object
+            //  object
             if (typeof value === "object") {
                 formData.append(key, JSON.stringify(value));
                 return;
@@ -148,11 +211,20 @@ const ProductForm = ({ visibleProductForm }) => {
         }
     };
 
+    const toggleCategory = (id) => {
+        setProduct(prev => ({
+            ...prev,
+            categoryIds: prev.categoryIds.includes(id)
+                ? prev.categoryIds.filter(c => c !== id) // bỏ chọn nếu nó đang chọn
+                : [...prev.categoryIds, id] //  (thêm vô mảng )chọn nếu hiện tại chưa đuoc chọn
+        }))
+    }
+
 
     return (
         <CCard visible={visibleProductForm}>
             <CCardHeader >
-                <h3>Add Product</h3>
+                <h3>{product.id ? 'Update Product' : 'Add Product'}</h3>
             </CCardHeader>
             <CCardBody>
 
@@ -164,7 +236,7 @@ const ProductForm = ({ visibleProductForm }) => {
                     <CFormTextarea name="description" value={product.description} onChange={handleProductChange} />
 
                     <CFormLabel>Image URL</CFormLabel>
-                    <CFormInput name="imageUrl" type="file" value={product.imageName} onChange={(e) => uploadMainImage(e)} />
+                    <CFormInput name="imageUrl" type="file" onChange={(e) => uploadMainImage(e)} />
 
                     {imagePreview && (
                         <div style={{ marginTop: "10px" }}>
@@ -172,9 +244,11 @@ const ProductForm = ({ visibleProductForm }) => {
                                 src={imagePreview}
                                 alt="Preview"
                                 style={{
-                                    width: "150px",
-                                    height: "150px",
-                                    objectFit: "cover",
+                                    maxWidth: "200px",
+                                    maxHeight: "200px",
+                                    width: "auto",
+                                    height: "auto",
+                                    objectFit: "contain",
                                     borderRadius: "8px",
                                     border: "1px solid #ddd",
                                 }}
@@ -182,38 +256,44 @@ const ProductForm = ({ visibleProductForm }) => {
                         </div>
                     )}
 
+
+
+
+
+
                     <CFormLabel>Price</CFormLabel>
                     <CFormInput type="number" name="price" value={product.price} onChange={handleProductChange} required />
 
                     <CFormLabel>Discount</CFormLabel>
                     <CFormInput type="number" name="discount" value={product.discount} onChange={handleProductChange} />
 
-                    <CFormLabel>Category IDs (comma separated)</CFormLabel>
-                    {/* <CFormInput
-                        name="categoryIds"
-                        value={product.categoryIds.join(',')}
-                        onChange={(e) => setProduct({ ...product, categoryIds: e.target.value.split(',') })}
-                    /> */}
-
-                    <CFormSelect
-                        id="product-category"
-                        name="category"
-                        value={product.category}
-                        onChange={(e) => setProduct({ ...product, category: e.target.value })}
-                    >
-                        <option value="">Select Category</option>
-                        {categories && categories.length > 0 && categories.map(cat => (
-                            <option key={cat.id} value={cat.id}>
-                                {cat.name}
-                            </option>
-                        ))}
 
 
 
-                        {/* <option value="electronics">Electronics</option>
-                        <option value="clothing">Clothing</option>
-                        <option value="books">Books</option> */}
-                    </CFormSelect>
+
+                    <div className="mt-4">
+                        <CFormLabel className="fw-semibold">
+                            Category <span className="text-danger">*</span>
+                        </CFormLabel>
+
+                        <CCard className="mt-2">
+                            <CCardBody className="category-scroll">
+                                <CRow>
+                                    {categories.map(c => (
+                                        <CCol md={6} key={c.id}>
+                                            <CFormCheck
+                                                label={c.name}
+                                                value={c.id}
+                                                checked={product.categoryIds.includes(c.id)}
+                                                onChange={() => toggleCategory(c.id)}
+                                                className="mb-2"
+                                            />
+                                        </CCol>
+                                    ))}
+                                </CRow>
+                            </CCardBody>
+                        </CCard>
+                    </div>
 
                     <hr />
                     <h5>Product Variants</h5>
@@ -235,7 +315,7 @@ const ProductForm = ({ visibleProductForm }) => {
                                     <CTableDataCell>{v.color}</CTableDataCell>
                                     <CTableDataCell>{v.size}</CTableDataCell>
                                     <CTableDataCell>{v.price}</CTableDataCell>
-                                    <CTableDataCell>{v.stock}</CTableDataCell>
+                                    <CTableDataCell>{v.stockQuantity}</CTableDataCell>
                                     <CTableDataCell>
                                         <CButton size="sm" color="info" onClick={() => handleEditVariant(idx)}>Edit</CButton>{' '}
                                         <CButton size="sm" color="danger" onClick={() => handleDeleteVariant(idx)}>Delete</CButton>
@@ -247,7 +327,7 @@ const ProductForm = ({ visibleProductForm }) => {
 
                     <CButton color="secondary" style={{ marginTop: '10px' }} onClick={() => addVariant()}>Add Variant</CButton>
                     <br />
-                    <CButton color="primary" type="submit" style={{ marginTop: '20px' }}>Create Product</CButton>
+                    <CButton color="primary" type="submit" style={{ marginTop: '20px' }}>Save</CButton>
                 </CForm>
 
                 <VariantModal

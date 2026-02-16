@@ -18,4 +18,5 @@ public interface ProductVariantService {
     List<ProductVariant> getProductVariantByIds(Set<Long> variantIds);
     ProductVariant getVariantById(Long variantId);
     void saveProductVariant(ProductVariant productVariant);
+    int deleteByProductId(String productId);
 }

@@ -20,7 +20,7 @@ public class ProductResponseDto {
     private String imageUrl;
     private BigDecimal price;
     private BigDecimal discount;
-    private String category;
+    private List<String> categoryIds;
     private int version;
     private List<ProductVariantResponseDto> variants;
     private Set<CategoryResponseDto> categories;

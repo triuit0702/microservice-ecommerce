@@ -1,14 +1,19 @@
 package net.javaguides.product_service.service.impl;
 
 import com.cloudinary.utils.ObjectUtils;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.ws.rs.core.Variant;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import net.javaguides.common_lib.dto.product.ProductDTO;
 import net.javaguides.common_lib.dto.product.ProductEvent;
 import net.javaguides.common_lib.dto.product.ProductMethod;
 import net.javaguides.product_service.dto.*;
+import net.javaguides.product_service.dto.category.CategoryResponseDto;
 import net.javaguides.product_service.dto.product.*;
 import net.javaguides.product_service.dto.product_variant.ProductVariantDto;
+import net.javaguides.product_service.entity.Category;
 import net.javaguides.product_service.entity.ProductVariant;
 import net.javaguides.product_service.redis.ProductRedis;
 import net.javaguides.product_service.entity.Product;
@@ -16,9 +21,12 @@ import net.javaguides.product_service.exception.ProductException;
 import net.javaguides.product_service.kafka.producer.ProductProducer;
 import net.javaguides.product_service.repository.ProductRepository;
 import net.javaguides.product_service.repository.ProductVariantRepository;
+import net.javaguides.product_service.service.CategoryService;
 import net.javaguides.product_service.service.CloudinaryService;
 import net.javaguides.product_service.service.ProductService;
+import net.javaguides.product_service.service.ProductVariantService;
 import net.javaguides.product_service.specification.ProductSpecification;
+import org.apache.commons.lang.StringUtils;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +51,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ProductServiceImpl implements ProductService {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProductServiceImpl.class);
     private final ProductProducer productProducer;
@@ -51,6 +60,9 @@ public class ProductServiceImpl implements ProductService {
     private final ModelMapper modelMapper;
     private final ProductRedis productDAO;
     private final CloudinaryService cloudinaryService;
+    private final CategoryService categoryService;
+    private final ProductVariantService productVariantService;
+
 
     @Value("${cloudinary.cloud-name}")
     private String cloudName;
@@ -92,20 +104,33 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public ProductResponseDto getProductById(String id) {
-        ProductCacheDto cachedProduct = productDAO.findByProductId(id);
+//        ProductCacheDto cachedProduct = productDAO.findByProductId(id);
+//
+//        if (cachedProduct != null) {
+//            LOGGER.info("Cache hit for product id: {}", id);
+//            return modelMapper.map(cachedProduct, ProductResponseDto.class);
+//        } else {
+//            LOGGER.info("Cache miss for product id: {}", id);
+//            Product product = productRepository.findById(id)
+//                    .orElseThrow(() -> new ProductException("Product not found with id: " + id, HttpStatus.NOT_FOUND));
+//
+//            productDAO.save(product);
+//
+//            return modelMapper.map(product, ProductResponseDto.class);
+//        }
 
-        if (cachedProduct != null) {
-            LOGGER.info("Cache hit for product id: {}", id);
-            return modelMapper.map(cachedProduct, ProductResponseDto.class);
-        } else {
-            LOGGER.info("Cache miss for product id: {}", id);
-            Product product = productRepository.findById(id)
-                    .orElseThrow(() -> new ProductException("Product not found with id: " + id, HttpStatus.NOT_FOUND));
+        LOGGER.info("Cache miss for product id: {}", id);
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ProductException("Product not found with id: " + id, HttpStatus.NOT_FOUND));
 
-            productDAO.save(product);
 
-            return modelMapper.map(product, ProductResponseDto.class);
-        }
+        ProductResponseDto productResponseDto = modelMapper.map(product, ProductResponseDto.class);
+        List<String> categoryIds = product.getCategories().stream()
+                .map(Category::getId)
+                .toList();
+        productResponseDto.setCategoryIds(categoryIds);
+        return productResponseDto;
+
     }
 
 
@@ -140,19 +165,126 @@ public class ProductServiceImpl implements ProductService {
                                 + existingProduct.getVersion(), HttpStatus.CONFLICT);
                     }
 
-                    modelMapper.map(productUpdateDto, existingProduct);
+//                    modelMapper.map(productUpdateDto, existingProduct);
+//
+//                    Product savedProduct = productRepository.save(existingProduct);
+//
+//                    // Cập nhật sản phẩm trong cache
+//                    productDAO.save(savedProduct);
+//
+//                    return modelMapper.map(savedProduct, ProductResponseDto.class);
+                    Product updatedProduct;
+                    try {
+                         updatedProduct = excuteUpdate(productUpdateDto, existingProduct);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    return modelMapper.map(updatedProduct, ProductResponseDto.class);
 
-                    Product savedProduct = productRepository.save(existingProduct);
-
-                    // Cập nhật sản phẩm trong cache
-                    productDAO.save(savedProduct);
-
-                    return modelMapper.map(savedProduct, ProductResponseDto.class);
                 })
                 .orElseThrow(() -> new ProductException("Product not found with id: " + id, HttpStatus.NOT_FOUND));
     }
 
 
+    private Product excuteUpdate( UpdateProductRequestDto productUpdateDto , Product existingProduct) throws IOException {
+        UploadResponse uploadResponse = null;
+        try {
+            modelMapper.map(productUpdateDto, existingProduct);
+
+            // upload main image product
+            if (productUpdateDto.getImageFile() != null) {
+                uploadResponse = cloudinaryService.uploadImageExisting(productUpdateDto.getImageFile(), "products/"  + existingProduct.getId());
+                existingProduct.setImageUrl(uploadResponse.getUrl());
+            }
+
+
+            //Set<Category> categories = new HashSet<>();
+            // get category
+            // Category category = categoryService.getById(req.getCategory());
+            Set<Category> categories = categoryService.getByCategoryIdList(productUpdateDto.getCategoryIds());
+
+            if (!CollectionUtils.isEmpty(categories)) {
+                existingProduct.setCategories(categories);
+            }
+
+            existingProduct = productRepository.save(existingProduct);
+
+            // delete old variants
+            productVariantService.deleteByProductId(existingProduct.getId());
+
+            if (StringUtils.isEmpty(productUpdateDto.getVariants())) {
+                return existingProduct;
+            }
+            List<ProductVariantDto> variants = convertStringToVariantDto(productUpdateDto.getVariants());
+
+
+
+            List<ProductVariant> productVariantList = new ArrayList<>();
+            List<String> oldPublicIds = new ArrayList<>();
+            // 2. Loop variants
+            for (ProductVariantDto vReq : variants) {
+
+                ProductVariant variant = new ProductVariant();
+                variant.setSku(vReq.getSku());
+                variant.setPrice(vReq.getPrice());
+                variant.setColor(vReq.getColor());
+                variant.setSize(vReq.getSize());
+                variant.setMaterial(vReq.getMaterial());
+                variant.setStockQuantity(vReq.getStockQuantity());
+                variant.setProduct(existingProduct);
+
+                productVariantList.add(variant);
+                oldPublicIds.add(vReq.getImagePublicId());
+            }
+
+            // save list variant to DB
+            List<ProductVariant> savedVariants = productVariantRepository.saveAllAndFlush(productVariantList);
+            List<Long> ids = savedVariants.stream().map(ProductVariant::getId).toList();
+            for (int i=0; i < savedVariants.size(); i ++) {
+                ProductVariant variant = savedVariants.get(i);
+                String oldPublicId = oldPublicIds.get(i);
+
+                // 3. Rename ảnh temp → permanent
+//                String newPublicId =
+//                        "products/" + existingProduct.getId()
+//                                + "/variants/" + variant.getId();
+                cloudinaryService.renameImage(
+                        oldPublicId
+                );
+
+              //  variant.setImagePublicId(newPublicId);
+                variant.setImageUrl(cloudinaryService.getUrlByPublicId(oldPublicId));
+            }
+
+            // update db
+            productVariantRepository.saveAll(savedVariants);
+        } catch (Exception e) {
+            // 3. Rollback ảnh nếu DB fail
+            if (uploadResponse != null) {
+                cloudinaryService.deleteImage(uploadResponse.getPublicId());
+            }
+
+            log.error("Update product failed, productId={}", existingProduct.getId(), e);
+            throw e; // cho transaction rollback DB
+        }
+        return existingProduct;
+    }
+
+    private List<ProductVariantDto> convertStringToVariantDto(String variantStr) {
+        List<ProductVariantDto> variants = new ArrayList<>();
+
+        if (StringUtils.isNotBlank(variantStr)) {
+            try {
+                variants = new ObjectMapper().readValue(
+                        variantStr,
+                        new TypeReference<List<ProductVariantDto>>() {}
+                );
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return variants;
+    }
 
     @Override
     public void deleteProduct(String id) {
@@ -257,8 +389,20 @@ public class ProductServiceImpl implements ProductService {
             product.setDiscount(req.getDiscount());
 
             // upload main image product
-            uploadResponse = cloudinaryService.uploadImageToFolder(image, "products/"  , product.getId());
-            product.setImageUrl(uploadResponse.getUrl());
+            if (image != null) {
+                uploadResponse = cloudinaryService.uploadImageToFolder(image, "products"  , product.getId());
+                product.setImageUrl(uploadResponse.getUrl());
+            }
+
+
+            //Set<Category> categories = new HashSet<>();
+            // get category
+           // Category category = categoryService.getById(req.getCategory());
+            Set<Category> categories = categoryService.getByCategoryIdList(req.getCategoryIds());
+
+            if (!CollectionUtils.isEmpty(categories)) {
+                product.setCategories(categories);
+            }
 
             product = productRepository.save(product);
 
@@ -274,6 +418,9 @@ public class ProductServiceImpl implements ProductService {
                 ProductVariant variant = new ProductVariant();
                 variant.setSku(vReq.getSku());
                 variant.setPrice(vReq.getPrice());
+                variant.setColor(vReq.getColor());
+                variant.setSize(vReq.getSize());
+                variant.setMaterial(vReq.getMaterial());
                 variant.setStockQuantity(vReq.getStockQuantity());
                 variant.setProduct(product);
 
@@ -286,19 +433,18 @@ public class ProductServiceImpl implements ProductService {
             List<Long> ids = savedVariants.stream().map(ProductVariant::getId).toList();
             for (int i=0; i < savedVariants.size(); i ++) {
                 ProductVariant variant = savedVariants.get(i);
-                String oldPublicId = oldPublicIds.get(i);
+                String publicIdVariant = oldPublicIds.get(i);
 
                 // 3. Rename ảnh temp → permanent
-                String newPublicId =
-                        "products/" + product.getId()
-                                + "/variants/" + variant.getId();
+//                String newPublicId =
+//                        "products/" + product.getId()
+//                                + "/variants/" + variant.getId();
                 cloudinaryService.renameImage(
-                        oldPublicId,
-                        newPublicId
+                        publicIdVariant
                 );
 
-                variant.setImagePublicId(newPublicId);
-                variant.setImageUrl(cloudinaryService.getUrlByPublicId(newPublicId));
+               // variant.setImagePublicId(newPublicId);
+                variant.setImageUrl(cloudinaryService.getUrlByPublicId(publicIdVariant));
             }
 
             // update db

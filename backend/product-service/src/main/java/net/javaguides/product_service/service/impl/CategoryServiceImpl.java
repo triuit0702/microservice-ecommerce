@@ -7,6 +7,7 @@ import net.javaguides.product_service.repository.CategoryRepository;
 import net.javaguides.product_service.service.CategoryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -65,6 +66,8 @@ public class CategoryServiceImpl implements CategoryService {
         return convertToDto(category);
     }
 
+
+
     @Override
     public List<CategoryResponseDto> getAllCategories() {
         List<Category> categories = categoryRepository.findAll();
@@ -79,6 +82,20 @@ public class CategoryServiceImpl implements CategoryService {
         return rootCategories.stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public Category getById(String id) {
+        return categoryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+    }
+
+    @Override
+    public Set<Category> getByCategoryIdList(List<String> idList) {
+        if (CollectionUtils.isEmpty(idList)) {
+            throw new RuntimeException("category id list not exist");
+        }
+        return categoryRepository.findByIdIn(idList);
     }
 
     // Hàm chuyển đổi từ entity sang DTO

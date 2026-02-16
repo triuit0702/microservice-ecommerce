@@ -28,9 +28,9 @@ public class UploadService {
         Map<String, Object> result = cloudinary.uploader().upload(
                 file.getBytes(),
                 ObjectUtils.asMap(
-                        "folder", "products/temp",
+                        "folder", "products/variants",
                         "public_id", uuid,
-                        "tags", "temp",
+                        "tags", "temp,unsaved",
                         "resource_type", "image"
                 )
         );

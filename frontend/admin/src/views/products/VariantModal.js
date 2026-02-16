@@ -28,7 +28,9 @@ const VariantModal = ({ visible, onClose, onSave, variantData }) => {
 
     useEffect(() => {
         if (variantData) {
+            // console.log(variantData);
             setVariant(variantData);
+            setPreview(variantData.imageUrl);
             // setVariant(prev => ({
             //     ...defaultVariant,
             //     ...variantData,
@@ -125,7 +127,7 @@ const VariantModal = ({ visible, onClose, onSave, variantData }) => {
                 <CFormInput type="number" name="price" value={variant.price} onChange={handleChange} />
 
                 <CFormLabel>Stock</CFormLabel>
-                <CFormInput type="number" name="stockQuantity" value={variant.stock} onChange={handleChange} />
+                <CFormInput type="number" name="stockQuantity" value={variant.stockQuantity} onChange={handleChange} />
 
 
 

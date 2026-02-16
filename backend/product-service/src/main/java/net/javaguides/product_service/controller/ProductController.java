@@ -78,10 +78,11 @@ public class ProductController {
         }
     }
 
-    @PutMapping("/update/{id}")
-    public ResponseEntity<ApiResponse<?>> updateProduct(@PathVariable("id") String id, @RequestBody UpdateProductRequestDto productDTO, @RequestHeader(HttpHeaders.IF_MATCH) int version) {
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<?>> updateProduct(@PathVariable("id") String id,
+                                                        @ModelAttribute UpdateProductRequestDto productDTO) {
         try {
-            ProductResponseDto productStockResponse = productService.updateProduct(id, productDTO, version);
+            ProductResponseDto productStockResponse = productService.updateProduct(id, productDTO, productDTO.getVersion());
             ApiResponse<ProductResponseDto> apiResponse = new ApiResponse<>(productStockResponse, HttpStatus.OK.value());
             return new ResponseEntity<>(apiResponse, HttpStatus.OK);
         }
@@ -145,22 +146,26 @@ public class ProductController {
                                        @RequestParam(required = false) MultipartFile imageFile)
             throws Exception {
 
-        System.out.println("kiem tra: "+ request);
+        List<ProductVariantDto> variants = convertStringToVariantDto(request.getVariants());
+
+       productService.createProduct(request, variants, imageFile);
+        return ResponseEntity.ok().build();
+    }
+
+    private List<ProductVariantDto> convertStringToVariantDto(String variantStr) {
         List<ProductVariantDto> variants = new ArrayList<>();
 
-        if (StringUtils.isNotBlank(request.getVariants())) {
+        if (StringUtils.isNotBlank(variantStr)) {
             try {
                 variants = new ObjectMapper().readValue(
-                        request.getVariants(),
+                        variantStr,
                         new TypeReference<List<ProductVariantDto>>() {}
                 );
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         }
-
-       productService.createProduct(request, variants, imageFile);
-        return ResponseEntity.ok().build();
+        return variants;
     }
 
 }

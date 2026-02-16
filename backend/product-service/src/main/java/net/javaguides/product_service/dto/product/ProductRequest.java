@@ -21,6 +21,7 @@ public class ProductRequest {
     private String imageUrl;
     private String imagePublicId;
     private String category;
+    private List<String> categoryIds;
 
     //private List<ProductVariantDto>  variants;
     private String variants;

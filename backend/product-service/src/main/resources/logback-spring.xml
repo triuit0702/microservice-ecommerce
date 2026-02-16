@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <appender name="CONSOLE"
+              class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>
+                {"time":"%d{yyyy-MM-dd HH:mm:ss.SSS}",
+                "level":"%level",
+                "service":"product-service",
+                "traceId":"%X{traceId}",
+                "spanId":"%X{spanId}",
+                "thread":"%thread",
+                "class":"%logger",
+                "message":"%msg"}%n
+            </pattern>
+        </encoder>
+    </appender>
+
+    <appender name="FILE"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/product-service.log</file>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/product-service.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>14</maxHistory>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>
+                {"time":"%d{yyyy-MM-dd HH:mm:ss.SSS}",
+                "level":"%level",
+                "service":"product-service",
+                "traceId":"%X{traceId}",
+                "spanId":"%X{spanId}",
+                "message":"%msg"}%n
+            </pattern>
+        </encoder>
+    </appender>
+
+    <appender name="JOB_FILE"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/job.log</file>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/job.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>14</maxHistory>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>
+                {"time":"%d{yyyy-MM-dd HH:mm:ss.SSS}",
+                "level":"%level",
+                "jobId":"%X{jobId}",
+                "jobName":"%X{jobName}",
+                "trigger":"%X{trigger}",
+                "message":"%msg"}%n
+            </pattern>
+        </encoder>
+    </appender>
+
+
+    <appender name="KAFKA_FILE"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/kafka.log</file>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/kafka.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>7</maxHistory>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>
+                {"time":"%d{yyyy-MM-dd HH:mm:ss.SSS}",
+                "level":"%level",
+                "logger":"%logger",
+                "message":"%msg"}%n
+            </pattern>
+        </encoder>
+    </appender>
+
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </root>
+
+    <logger name="JOB" level="INFO" additivity="false">
+        <appender-ref ref="JOB_FILE"/>
+    </logger>
+
+
+    <logger name="org.apache.kafka" level="INFO" additivity="false">
+        <appender-ref ref="KAFKA_FILE"/>
+    </logger>
+
+<!--    additivity="false" = KHÔNG đẩy lên root → không ra console-->
+    <!-- Kafka framework -->
+    <logger name="org.apache.kafka" level="WARN" additivity="false">
+        <appender-ref ref="KAFKA_FILE"/>
+    </logger>
+
+    <logger name="org.springframework.kafka" level="WARN" additivity="false">
+        <appender-ref ref="KAFKA_FILE"/>
+    </logger>
+
+
+
+
+</configuration>
