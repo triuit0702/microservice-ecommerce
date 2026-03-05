@@ -44,16 +44,13 @@ public class AuthController {
     public ResponseEntity<ApiResponse<String>> addNewUser(@RequestBody SignUpRequest signUpRequest) {
         try {
             String message = authService.saveUser(signUpRequest);
-            ApiResponse<String> apiResponse = new ApiResponse<>(message, HttpStatus.CREATED.value());
-            return new ResponseEntity<>(apiResponse, HttpStatus.CREATED);
+            return new ResponseEntity<>(ApiResponse.success(message), HttpStatus.CREATED);
         }
         catch(AuthException e){
-            ApiResponse<String> apiResponse = new ApiResponse<>(e.getMessage(), e.getStatus().value());
-            return new ResponseEntity<>(apiResponse, e.getStatus());
+            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), e.getStatus());
         }
         catch(Exception e){
-            ApiResponse<String> apiResponse = new ApiResponse<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value());
-            return new ResponseEntity<>(apiResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -86,17 +83,15 @@ public class AuthController {
                 loginResponse.setId(user.getId());
                 loginResponse.setUserName(authRequest.getUsername());
 
-                ApiResponse<LoginResponse> apiResponse = new ApiResponse<>(loginResponse, HttpStatus.OK.value());
                 // update last login
                 userService.updateLastLoginDate(user);
-                return new ResponseEntity<>(apiResponse, HttpStatus.OK);
+                return new ResponseEntity<>(ApiResponse.success(loginResponse), HttpStatus.OK);
             } else {
 
-                ApiResponse<String> apiResponse = new ApiResponse<>("Invalid access!", HttpStatus.BAD_REQUEST.value());
-                return new ResponseEntity<>(apiResponse, HttpStatus.OK);            }
+                //ApiResponse<String> apiResponse = new ApiResponse<>("Invalid access!");
+                return new ResponseEntity<>(ApiResponse.error("Invalid access!"), HttpStatus.BAD_REQUEST);            }
         }catch(Exception e){
-            ApiResponse<String> apiResponse = new ApiResponse<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value());
-            return new ResponseEntity<>(apiResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -104,11 +99,9 @@ public class AuthController {
     public ResponseEntity<ApiResponse<String>> validateToken(@RequestParam("token") String token) {
         try {
             authService.validateToken(token);
-            ApiResponse<String> apiResponse = new ApiResponse<>("Token is valid", HttpStatus.OK.value());
-            return new ResponseEntity<>(apiResponse, HttpStatus.OK);
+            return new ResponseEntity<>(ApiResponse.success("Token is valid"), HttpStatus.OK);
         }catch(Exception e){
-            ApiResponse<String> apiResponse = new ApiResponse<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value());
-            return new ResponseEntity<>(apiResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -118,11 +111,9 @@ public class AuthController {
             //UserDto userDto = userService.getUserByUsername(currentUser.getUsername());
             LoginResponse loginResponse = getUserLogin(currentUser.getUsername());
             loginResponse.setUserName(currentUser.getUsername());
-            ApiResponse<LoginResponse> apiResponse = new ApiResponse<>(loginResponse, HttpStatus.OK.value());
-            return new ResponseEntity<>(apiResponse, HttpStatus.OK);
+            return new ResponseEntity<>(ApiResponse.success(loginResponse), HttpStatus.OK);
         } catch (Exception e) {
-            ApiResponse<String> apiResponse = new ApiResponse<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value());
-            return new ResponseEntity<>(apiResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 

@@ -15,7 +15,7 @@ public class ProductRedis {
     private static final String HASH_KEY = "Product";
 
     @Autowired
-    private RedisTemplate<String, ProductCacheDto> redisTemplate;
+    private RedisTemplate<String, Object> redisTemplate;
 
     @Autowired
     private ModelMapper modelMapper;

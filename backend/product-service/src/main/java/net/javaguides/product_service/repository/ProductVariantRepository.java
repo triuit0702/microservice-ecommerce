@@ -16,4 +16,6 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
     @Modifying
     @Transactional
     int deleteByProductId(String productId);
+
+    int deleteAllByProductId(String productId);
 }

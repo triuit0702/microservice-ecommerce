@@ -32,7 +32,12 @@ public class ProductVariantController {
     public ResponseEntity<ProductVariantResponseDto> createVariant(
             @PathVariable String productId,
             @RequestBody CreateProductVariantRequestDto requestDto) {
-        ProductVariantResponseDto variant = productVariantService.createProductVariant(productId, requestDto.getAttributes(), requestDto.getPrice(), requestDto.getSku(), requestDto.getInitialStock(), requestDto.getReorderLevel());
+        ProductVariantResponseDto variant = productVariantService.createProductVariant(productId,
+                requestDto.getAttributes(),
+                requestDto.getPrice(),
+                requestDto.getSku(),
+                requestDto.getInitialStock(),
+                requestDto.getReorderLevel());
 
         return ResponseEntity.ok(variant);
     }
@@ -55,23 +60,18 @@ public class ProductVariantController {
 
 
     @PutMapping("{variantId}")
-    public ResponseEntity<ApiResponse<?>> updateVariant(@PathVariable Long variantId, @RequestBody UpdateProductVariantRequestDto requestDto){
-        try {
-            ProductVariantResponseDto responseDto = productVariantService.updateProductVariant(variantId, requestDto);
-            return new ResponseEntity<>(new ApiResponse<>(responseDto, HttpStatus.OK.value()), HttpStatus.OK);
-        }catch(Exception e){
-            return new ResponseEntity<>(new ApiResponse<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value()), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+    public ResponseEntity<ApiResponse<?>> updateVariant(@PathVariable Long variantId, @RequestBody UpdateProductVariantRequestDto requestDto) {
+        ProductVariantResponseDto responseDto = productVariantService.updateProductVariant(variantId, requestDto);
+        return ResponseEntity.ok(
+                ApiResponse.success(responseDto)
+        );
+
     }
 
     @DeleteMapping("{variantId}")
-    public ResponseEntity<ApiResponse<?>> deleteVariant(@PathVariable Long variantId){
-        try {
-            productVariantService.deleteProductVariant(variantId);
-            return new ResponseEntity<>(null, HttpStatus.NO_CONTENT);
-        }catch(Exception e){
-            return new ResponseEntity<>(new ApiResponse<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value()), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+    public ResponseEntity<ApiResponse<?>> deleteVariant(@PathVariable Long variantId) {
+        productVariantService.deleteProductVariant(variantId);
+        return ResponseEntity.noContent().build();
     }
 
 

@@ -21,8 +21,6 @@ public class ValidationExceptionHandler {
         );
 
         // Tạo ApiResponse với lỗi
-        ApiResponse<Map<String, String>> apiResponse = new ApiResponse<>(errors, HttpStatus.BAD_REQUEST.value());
-
-        return new ResponseEntity<>(apiResponse, HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(ApiResponse.error("validation exception handler error",errors), HttpStatus.BAD_REQUEST);
     }
 }

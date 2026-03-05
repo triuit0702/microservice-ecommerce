@@ -38,6 +38,8 @@ public class Product extends AbstractEntity {
     @Column
     private BigDecimal discount;
 
+    private boolean delFlg;
+
     @ManyToMany
     @JoinTable(
             name = "product_category",

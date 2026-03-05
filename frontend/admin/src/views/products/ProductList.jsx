@@ -1,4 +1,3 @@
-// src/views/products/ProductList.jsx
 import React, { useEffect, useState } from "react";
 import {
     CButton,
@@ -16,14 +15,24 @@ import {
 import { getProducts, createProduct, updateProduct, deleteProduct } from "../../services/ProductService";
 import { useSelector } from "react-redux";
 import { useNavigate } from 'react-router-dom';
+import Pagination from "../common/Pagination";
+import { useSearchParams } from "react-router-dom";
 
 const ProductList = () => {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
-    //const [editingProduct, setEditingProduct] = useState(null);
     const navigate = useNavigate();
 
+    // page
+    const [searchParams, setSearchParams] = useSearchParams();
+    // Lấy page từ URL
+    const page = parseInt(searchParams.get("page") || "0", 10);
+
+
+    // pagination
+    const [totalPages, setTotalPages] = useState(0);
+    const pageSize = 10;
 
     // use redux get auth user
     const userLogin = useSelector(state => state.auth.user);
@@ -32,8 +41,9 @@ const ProductList = () => {
     const fetchProducts = async () => {
         setLoading(true);
         try {
-            const res = await getProducts();
+            const res = await getProducts(page, pageSize);
             setProducts(res.data.data.content);
+            setTotalPages(res.data.data.totalPages);
         } catch (err) {
             console.error(err);
         } finally {
@@ -43,21 +53,19 @@ const ProductList = () => {
 
     useEffect(() => {
         fetchProducts();
-    }, []);
+    }, [page]);
 
     const openAddModal = () => {
         setModalVisible(true);
     };
 
+    // open edit modal
     const openEditModal = (product) => {
-
-        // setEditingProduct(product);
-        // setFormData({ name: product.name, price: product.price });
-        // setModalVisible(true);
 
         navigate(`/products/edit/${product.id}`)
     };
 
+    // delete product
     const handleDelete = async (id) => {
         if (window.confirm("Bạn có chắc muốn xóa sản phẩm này?")) {
             await deleteProduct(id);
@@ -65,6 +73,12 @@ const ProductList = () => {
         }
     };
 
+    // Hàm đổi page
+    const handlePageChange = (newPage) => {
+        setSearchParams({ page: newPage });
+    };
+
+    // submit create or update product
     const handleSubmit = async () => {
         try {
             if (editingProduct) {
@@ -81,17 +95,6 @@ const ProductList = () => {
 
     return (
         <CCard>
-            {/* <ProductForm
-                visible={modalVisible}
-                editingProduct={false}
-                hideModal={() => setModalVisible(false)}
-            /> */}
-
-            {/* <AddProduct
-                visibleProductForm={false}
-                editingProduct={false}
-                hideModal={() => setModalVisible(false)}
-            /> */}
 
 
             <CCardHeader className="d-flex justify-content-between align-items-center">
@@ -133,12 +136,14 @@ const ProductList = () => {
                         }
                     </CTableBody>
                 </CTable>
+
+
+
             </CCardBody>
-
-
-
-
-
+            {/* Pagination */}
+            <Pagination page={page}
+                totalPages={totalPages}
+                onPageChange={handlePageChange} />
 
         </CCard>
     );

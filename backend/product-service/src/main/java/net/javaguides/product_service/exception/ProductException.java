@@ -10,6 +10,11 @@ public class ProductException extends  RuntimeException {
         this.status = status;
     }
 
+    public ProductException(String message, HttpStatus status, Throwable cause){
+        super(message, cause);
+        this.status = status;
+    }
+
     public HttpStatus getStatus() {
         return status;
     }

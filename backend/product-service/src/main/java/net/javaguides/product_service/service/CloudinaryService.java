@@ -1,6 +1,7 @@
 package net.javaguides.product_service.service;
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
+import com.cloudinary.utils.StringUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javaguides.product_service.dto.UploadResponse;
@@ -65,13 +66,8 @@ public class CloudinaryService {
     }
 
     // rename image: change folder image
-    public String renameImage(String publicId) {
+    public String updateImageTags(String publicId) {
         try {
-//            Map result = cloudinary.uploader().rename(oldPublicId, newPublicId,  ObjectUtils.asMap(
-//                    "overwrite", true,
-//                    "asset_folder", "products/variants"
-//
-//            ));
 
             String[] tags = {"temp", "unsaved"};
             String[] publicIdArr = {publicId};
@@ -80,22 +76,11 @@ public class CloudinaryService {
                     publicIdArr,
                     ObjectUtils.emptyMap());
 
-
             String[] newTags = {"product", "saved"};
             cloudinary.uploader().addTag(
                     newTags,
                     publicIdArr,
                     ObjectUtils.emptyMap());
-
-
-//            cloudinary.uploader().explicit(
-//                    publicId,
-//                    ObjectUtils.asMap(
-//                            "type", "upload",
-//                            "asset_folder", "products/variants"
-//                    )
-//            );
-
 
             return publicId;
         } catch (IOException e) {
@@ -108,7 +93,7 @@ public class CloudinaryService {
         return cloudinary.url().secure(true).generate(publicId);
     }
 
-    public UploadResponse uploadImageToFolder(MultipartFile file, String folder, String publicId) throws IOException {
+    public UploadResponse uploadImageToFolder(MultipartFile file, String folder) throws IOException {
 
         // Validate
         if (file.isEmpty()) {
@@ -120,7 +105,7 @@ public class CloudinaryService {
                 file.getBytes(),
                 ObjectUtils.asMap(
                         "folder", folder,
-                        "public_id", publicId,
+                        //"public_id", publicId,
                         "tags", "product",
                         "resource_type", "image"
                 )
@@ -132,33 +117,44 @@ public class CloudinaryService {
                 .build();
     }
 
-    public UploadResponse uploadImageExisting(MultipartFile file, String publicId) throws IOException {
+    /**
+     * Upload image
+     * @param file
+     * @param publicId
+     * @return
+     * @throws IOException
+     */
+    public UploadResponse uploadImage(MultipartFile file, String publicId) throws IOException {
 
         // Validate
         if (file.isEmpty()) {
             throw new IllegalArgumentException("File is empty");
         }
 
-        Map<String, Object> result = Map.of();
-
         try {
-            result = cloudinary.uploader().upload(file.getBytes(),  Map.of(
+            Map<String, Object> result = cloudinary.uploader().upload(file.getBytes(),  Map.of(
                     "public_id", publicId,
                     "overwrite", true,
-                    "invalidate", true // cực kỳ quan trọng
+                    "invalidate", true
             ));
+            return UploadResponse.builder()
+                    .url((String) result.get("secure_url"))
+                    .publicId((String) result.get("public_id"))
+                    .build();
         } catch (Exception e) {
             log.error("Failed update  image: {}", publicId, e);
+            //  Phải throw để transaction rollback
+            throw new RuntimeException("Upload image failed", e);
         }
 
-        return UploadResponse.builder()
-                .url((String) result.get("secure_url"))
-                .publicId((String) result.get("public_id"))
-                .build();
     }
 
     public void deleteImage(String publicId) {
         try {
+            if (StringUtils.isEmpty(publicId)) {
+                log.info("publicId not exist");
+                return;
+            }
             cloudinary.uploader().destroy(
                     publicId,
                     ObjectUtils.asMap("resource_type", "image")

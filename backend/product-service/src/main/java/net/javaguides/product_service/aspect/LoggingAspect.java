@@ -18,18 +18,26 @@ public class LoggingAspect {
     // Ghi log trước khi các method trong các service được thực thi
     @Before("execution(* net.javaguides.product_service.service.impl.*.*(..))")
     public void logBeforeMethod(JoinPoint joinPoint) {
-        log.info("Starting method: " + joinPoint.getSignature().getName());
+        log.info("Starting method: {}", joinPoint.getSignature().toShortString());
     }
 
     // Ghi log sau khi các method hoàn thành
-    @AfterReturning(pointcut = "execution(* net.javaguides.product_service.service.impl.*.*(..))", returning = "result")
+    @AfterReturning(
+            pointcut = "execution(* net.javaguides.product_service.service.impl.*.*(..))",
+            returning = "result")
     public void logAfterReturning(JoinPoint joinPoint, Object result) {
-        log.info("Completed method: " + joinPoint.getSignature().getName() + " with result: " + result);
+        log.info("Completed method: {} with result: {}",
+                joinPoint.getSignature().toShortString(),
+                result);
     }
 
     // Ghi log khi có exception
-    @AfterThrowing(pointcut = "execution(* net.javaguides.product_service.service.impl.*.*(..))", throwing = "error")
+    @AfterThrowing(
+            pointcut = "execution(* net.javaguides.product_service.service.impl.*.*(..))",
+            throwing = "error")
     public void logAfterThrowing(JoinPoint joinPoint, Throwable error) {
-        log.error("Exception in method: " + joinPoint.getSignature().getName() + " with cause: " + error.getMessage());
+        log.error("Exception in method: {}",
+                joinPoint.getSignature().toShortString(),
+                error);
     }
 }

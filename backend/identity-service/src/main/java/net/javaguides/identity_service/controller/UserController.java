@@ -41,16 +41,13 @@ public class UserController {
     public ResponseEntity<ApiResponse<String>> addNewUser(@RequestBody SignUpRequest signUpRequest) {
         try {
             String message = authService.saveUser(signUpRequest);
-            ApiResponse<String> apiResponse = new ApiResponse<>(message, HttpStatus.CREATED.value());
-            return new ResponseEntity<>(apiResponse, HttpStatus.CREATED);
+            return new ResponseEntity<>(ApiResponse.success(message), HttpStatus.CREATED);
         }
         catch(AuthException e){
-            ApiResponse<String> apiResponse = new ApiResponse<>(e.getMessage(), e.getStatus().value());
-            return new ResponseEntity<>(apiResponse, e.getStatus());
+            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), e.getStatus());
         }
         catch(Exception e){
-            ApiResponse<String> apiResponse = new ApiResponse<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value());
-            return new ResponseEntity<>(apiResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -59,14 +56,11 @@ public class UserController {
     public ResponseEntity<ApiResponse<String>> update(@RequestBody SignUpRequest signUpRequest) {
         try {
             userService.upateUser(signUpRequest);
-            ApiResponse<String> apiResponse = new ApiResponse<>("user updated success", HttpStatus.OK.value());
-            return new ResponseEntity<>(apiResponse, HttpStatus.OK);
+            return new ResponseEntity<>(ApiResponse.success("user updated success"), HttpStatus.OK);
         } catch (ResourceNotFoundException e) {
-            ApiResponse<String> apiResponse = new ApiResponse<>(e.getMessage(), e.getStatus().value());
-            return new ResponseEntity<>(apiResponse, e.getStatus());
+            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), e.getStatus());
         } catch (Exception e) {
-            ApiResponse<String> apiResponse = new ApiResponse<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value());
-            return new ResponseEntity<>(apiResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
     }
@@ -75,14 +69,11 @@ public class UserController {
     public ResponseEntity<ApiResponse<String>>  delete(@RequestParam Long userId) {
         try {
             userService.deleteUser(userId);
-            ApiResponse<String> apiResponse = new ApiResponse<>("user deleted success", HttpStatus.OK.value());
-            return new ResponseEntity<>(apiResponse, HttpStatus.OK);
+            return new ResponseEntity<>(ApiResponse.success("user deleted success"), HttpStatus.OK);
         } catch (ResourceNotFoundException e) {
-            ApiResponse<String> apiResponse = new ApiResponse<>(e.getMessage(), e.getStatus().value());
-            return new ResponseEntity<>(apiResponse, e.getStatus());
+            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), e.getStatus());
         } catch (Exception e) {
-            ApiResponse<String> apiResponse = new ApiResponse<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value());
-            return new ResponseEntity<>(apiResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 

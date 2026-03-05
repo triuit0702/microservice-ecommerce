@@ -14,4 +14,6 @@ public interface ProductRepository extends JpaRepository<Product, String>, JpaSp
 
     @Override
     Page<Product> findAll(Pageable pageable);
+
+    Page<Product> findByDelFlgFalse(Pageable pageable);
 }

@@ -25,13 +25,13 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response,
                        org.springframework.security.access.AccessDeniedException accessDeniedException) throws IOException {
-        ApiResponse<String> apiResponse = new ApiResponse<>("Access denied", HttpStatus.FORBIDDEN.value());
-        apiResponse.setTimestamp(LocalDateTime.now());
+//        ApiResponse<String> apiResponse = new ApiResponse<>("Access denied", HttpStatus.FORBIDDEN.value());
+//        apiResponse.setTimestamp(LocalDateTime.now());
 
         response.setStatus(HttpStatus.FORBIDDEN.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
 
-        response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
+        response.getWriter().write(objectMapper.writeValueAsString(ApiResponse.error("Access denied")));
     }
 }

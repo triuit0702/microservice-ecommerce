@@ -3,6 +3,7 @@ package net.javaguides.product_service.service.impl;
 import net.javaguides.product_service.dto.category.CategoryResponseDto;
 import net.javaguides.product_service.dto.category.CreateCategoryRequestDto;
 import net.javaguides.product_service.entity.Category;
+import net.javaguides.product_service.entity.Product;
 import net.javaguides.product_service.repository.CategoryRepository;
 import net.javaguides.product_service.service.CategoryService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -114,5 +115,19 @@ public class CategoryServiceImpl implements CategoryService {
         }
 
         return dto;
+    }
+
+    /**
+     * attach Categories
+     * @param product
+     * @param categoryIds
+     */
+    public void attachCategories(Product product, List<String> categoryIds) {
+
+        if (categoryIds == null || categoryIds.isEmpty()) {
+            return;
+        }
+        Set<Category> categories = getByCategoryIdList(categoryIds);
+        product.setCategories(categories);
     }
 }

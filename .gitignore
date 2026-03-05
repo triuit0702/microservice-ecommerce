@@ -45,5 +45,7 @@ build/
 /backend/payment-service
 /backend/payment-service
 /backend/.idea
+/backend/logs
+/backend/product-service/logs
 
 /temp

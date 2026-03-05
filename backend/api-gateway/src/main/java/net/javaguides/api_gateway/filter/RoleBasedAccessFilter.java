@@ -90,9 +90,8 @@ public class RoleBasedAccessFilter extends AbstractGatewayFilterFactory<RoleBase
         exchange.getResponse().setStatusCode(httpStatus);
         exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
-        ApiResponse<String> apiResponse = new ApiResponse<>(errorMessage, httpStatus.value());
         try {
-            byte[] bytes = objectMapper.writeValueAsString(apiResponse).getBytes(StandardCharsets.UTF_8);
+            byte[] bytes = objectMapper.writeValueAsString(ApiResponse.error(errorMessage)).getBytes(StandardCharsets.UTF_8);
             return exchange.getResponse().writeWith(Mono.just(exchange.getResponse()
                     .bufferFactory().wrap(bytes)));
         } catch (Exception e) {

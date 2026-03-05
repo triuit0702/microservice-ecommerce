@@ -152,7 +152,7 @@ export default function UserManagement() {
     function DeleteButton({ item }) {
         if (userLogin.permissions && userLogin.permissions.includes("USER_DELETE")) {
             return <CButton size="sm"
-                color="warning"
+                color="danger"
                 className="me-2"
                 onClick={() => confirmDelete(item.id)} >
                 Xóa

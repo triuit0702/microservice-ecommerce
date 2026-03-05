@@ -21,7 +21,6 @@ public class DashboardController {
     @GetMapping
     public ResponseEntity<ApiResponse<?>> getDashboard() {
         DashboardResponse dashboardResponse = dashboardService.getDashboard();
-        ApiResponse<DashboardResponse> apiResponse = new ApiResponse<>(dashboardResponse, HttpStatus.OK.value());
-        return new ResponseEntity<>(apiResponse, HttpStatus.OK);
+        return new ResponseEntity<>(ApiResponse.success(dashboardResponse), HttpStatus.OK);
     }
 }

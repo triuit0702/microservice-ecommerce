@@ -1,10 +1,14 @@
-import axios from "axios";
 
 import axiosClient from "./AxiosClient";
 
 const API_URL = "/api/v1/product/products";
 
-export const getProducts = (params) => axiosClient.get(API_URL, { params });
+export const getProducts = (page, size) => axiosClient.get(API_URL, {
+    params: {
+        page, size
+    }
+});
+
 export const getProductById = (id) => axiosClient.get(`${API_URL}/${id}`);
 
 export const createProduct = (data) => axiosClient.post(API_URL, data, {
@@ -20,7 +24,7 @@ export const updateProduct = (id, data) => axiosClient.put(`${API_URL}/${id}`, d
 });
 
 
-export const deleteProduct = (id) => axios.delete(`${API_URL}/${id}`);
+export const deleteProduct = (id) => axiosClient.delete(`${API_URL}/${id}`);
 
 export const uploadImage = (data) => axiosClient.post('/api/v1/product/uploads/temp',
     data,
@@ -30,4 +34,3 @@ export const uploadImage = (data) => axiosClient.post('/api/v1/product/uploads/t
         }
     }
 );
-//export const uploadImage = (data) => axiosClient.get(API_URL + '/uploads');

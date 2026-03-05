@@ -55,11 +55,9 @@ public class ProductController {
     ) {
         try {
             Page<ProductResponseDto> productList = productService.getProductList(page, size);
-            ApiResponse<Page<ProductResponseDto>> apiResponse = new ApiResponse<>(productList, HttpStatus.OK.value());
-            return new ResponseEntity<>(apiResponse, HttpStatus.OK);
+            return new ResponseEntity<>(ApiResponse.success(productList), HttpStatus.OK);
         } catch (Exception e) {
-            ApiResponse<String> response = new ApiResponse<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value());
-            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -67,48 +65,36 @@ public class ProductController {
     public ResponseEntity<ApiResponse<?>> getProductById(@PathVariable("id") String id) {
         try {
             ProductResponseDto productStockResponse = productService.getProductById(id);
-            ApiResponse<ProductResponseDto> apiResponse = new ApiResponse<>(productStockResponse, HttpStatus.OK.value());
-            return new ResponseEntity<>(apiResponse, HttpStatus.OK);
+            return new ResponseEntity<>(ApiResponse.success(productStockResponse), HttpStatus.OK);
         } catch (ProductException e) {
-            ApiResponse<String> response = new ApiResponse<>(e.getMessage(), e.getStatus().value());
-            return new ResponseEntity<>(response, e.getStatus());
+            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), e.getStatus());
         } catch (Exception e) {
-            ApiResponse<String> response = new ApiResponse<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value());
-            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<?>> updateProduct(@PathVariable("id") String id,
-                                                        @ModelAttribute UpdateProductRequestDto productDTO) {
-        try {
-            ProductResponseDto productStockResponse = productService.updateProduct(id, productDTO, productDTO.getVersion());
-            ApiResponse<ProductResponseDto> apiResponse = new ApiResponse<>(productStockResponse, HttpStatus.OK.value());
-            return new ResponseEntity<>(apiResponse, HttpStatus.OK);
-        }
-        catch(OptimisticLockException e){
-            ApiResponse<String> response = new ApiResponse<>(e.getMessage(), HttpStatus.CONFLICT.value());
-            return new ResponseEntity<>(response, HttpStatus.CONFLICT);
-        }
-        catch (Exception e) {
-            ApiResponse<String> response = new ApiResponse<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value());
-            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+                                                        @Valid @ModelAttribute UpdateProductRequestDto productDTO) {
+        ProductResponseDto productStockResponse = productService.updateProduct(
+                id,
+                productDTO,
+                productDTO.getVersion());
+        return new ResponseEntity<>(ApiResponse.success(productStockResponse), HttpStatus.OK);
+
     }
 
     @DeleteMapping("{id}")
     public ResponseEntity<ApiResponse<?>> deleteProduct(@PathVariable("id") String id) {
         try {
             productService.deleteProduct(id);
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
         }
         catch (ProductException e) {
-            ApiResponse<String> response = new ApiResponse<>(e.getMessage(), e.getStatus().value());
-            return new ResponseEntity<>(response, e.getStatus());
+            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), e.getStatus());
         }
         catch (Exception e) {
-            ApiResponse<String> response = new ApiResponse<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value());
-            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -121,8 +107,7 @@ public class ProductController {
             Pageable pageable) {
 
         Page<ProductResponseDto> products = productService.searchProducts(name, categoryId, minPrice, maxPrice, pageable);
-        ApiResponse<Page<ProductResponseDto>> response = new ApiResponse<>(products, HttpStatus.OK.value());
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(products));
     }
 
 
@@ -131,41 +116,23 @@ public class ProductController {
     public ResponseEntity<ApiResponse<?>> getProductsByIds(@RequestParam("ids") Set<String> productIds) {
         try {
             List<ProductResponseDto> productDTOs = productService.getProductsByIds(productIds);
-            ApiResponse<List<ProductResponseDto>> apiResponse = new ApiResponse<>(productDTOs, HttpStatus.OK.value());
-            return new ResponseEntity<>(apiResponse, HttpStatus.OK);
+            return new ResponseEntity<>(ApiResponse.success(productDTOs), HttpStatus.OK);
         } catch (Exception e) {
-            ApiResponse<String> response = new ApiResponse<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value());
-            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
 
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Void> create(@ModelAttribute ProductRequest request,
+    public ResponseEntity<Void> create(@Valid @ModelAttribute ProductRequest request,
                                        @RequestParam(required = false) MultipartFile imageFile)
             throws Exception {
 
-        List<ProductVariantDto> variants = convertStringToVariantDto(request.getVariants());
-
-       productService.createProduct(request, variants, imageFile);
+       productService.createProduct(request, imageFile);
         return ResponseEntity.ok().build();
     }
 
-    private List<ProductVariantDto> convertStringToVariantDto(String variantStr) {
-        List<ProductVariantDto> variants = new ArrayList<>();
 
-        if (StringUtils.isNotBlank(variantStr)) {
-            try {
-                variants = new ObjectMapper().readValue(
-                        variantStr,
-                        new TypeReference<List<ProductVariantDto>>() {}
-                );
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }
-        return variants;
-    }
 
 }

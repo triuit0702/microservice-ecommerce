@@ -26,5 +26,5 @@ public interface ProductService {
     void deleteProduct(String id);
     List<ProductResponseDto> getProductsByIds(Set<String> productIds);
     Page<ProductResponseDto> searchProducts(String name, String categoryId, BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable);
-    void createProduct(ProductRequest req, List<ProductVariantDto>  variants,  MultipartFile image) throws IOException;
+    void createProduct(ProductRequest req,  MultipartFile image) throws IOException;
 }

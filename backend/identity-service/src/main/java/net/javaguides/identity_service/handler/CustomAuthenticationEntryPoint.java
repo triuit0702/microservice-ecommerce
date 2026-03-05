@@ -26,14 +26,14 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
                          AuthenticationException authException) throws IOException {
-        ApiResponse<String> apiResponse = new ApiResponse<>("Unauthorized access", HttpStatus.UNAUTHORIZED.value());
-        apiResponse.setTimestamp(LocalDateTime.now());
+       // ApiResponse<String> apiResponse = new ApiResponse<>("Unauthorized access");
+       // apiResponse.setTimestamp(LocalDateTime.now());
 
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
 
-        response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
+        response.getWriter().write(objectMapper.writeValueAsString(ApiResponse.error("Unauthorized access")));
     }
 
 
