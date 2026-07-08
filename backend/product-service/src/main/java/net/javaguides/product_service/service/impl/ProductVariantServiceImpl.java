@@ -68,7 +68,7 @@ public class ProductVariantServiceImpl implements ProductVariantService {
         ProductVariant savedVariant = productVariantRepository.save(variant);
 
         product.getVariants().add(savedVariant);
-        productRedis.save(product);
+        //productRedis.save(product);
 
         return modelMapper.map(savedVariant, ProductVariantResponseDto.class);
     }
@@ -121,9 +121,9 @@ public class ProductVariantServiceImpl implements ProductVariantService {
         ProductVariant updatedVariant = productVariantRepository.save(variant);
 
 
-        // Cập nhật cache cho sản phẩm
-       Product productAfterUpdate = variant.getProduct();
-        productRedis.save(productAfterUpdate);
+        // Cập nhật cache cho sản phẩm ?? chua biet cap nhat cache chỗ này để làm gì
+//       Product productAfterUpdate = variant.getProduct();
+//        productRedis.save(productAfterUpdate);
 
         return modelMapper.map(updatedVariant, ProductVariantResponseDto.class);
     }
@@ -164,6 +164,8 @@ public class ProductVariantServiceImpl implements ProductVariantService {
         productVariantRepository.flush();
         return total;
     }
+
+
 
     @Override
     public List<ProductVariant> getProductVariantByIds(Set<Long> variantIds) {

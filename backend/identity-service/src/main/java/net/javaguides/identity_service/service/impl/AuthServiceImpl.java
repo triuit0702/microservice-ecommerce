@@ -6,7 +6,9 @@ import jakarta.ws.rs.core.SecurityContext;
 import lombok.RequiredArgsConstructor;
 import net.javaguides.identity_service.config.CustomUserDetails;
 import net.javaguides.identity_service.dto.AuthRequest;
+import net.javaguides.identity_service.dto.LoginResponse;
 import net.javaguides.identity_service.dto.SignUpRequest;
+import net.javaguides.identity_service.entity.Permission;
 import net.javaguides.identity_service.entity.Role;
 import net.javaguides.identity_service.entity.UserCredential;
 import net.javaguides.identity_service.enums.ERole;
@@ -15,6 +17,7 @@ import net.javaguides.identity_service.repository.RoleRepository;
 import net.javaguides.identity_service.repository.UserCredentialRepository;
 import net.javaguides.identity_service.service.AuthService;
 import net.javaguides.identity_service.service.JwtService;
+import net.javaguides.identity_service.service.UserService;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -27,6 +30,7 @@ import org.springframework.stereotype.Service;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +40,8 @@ public class AuthServiceImpl implements AuthService {
     private final JwtService jwtService;
     private final RoleRepository roleRepository;
     private final AuthenticationManager authenticationManager;
+   // private final RedisTemplate<String, LoginResponse> redisTemplate;
+    private final UserService userService;
 
     @Override
     public String saveUser(SignUpRequest signUpRequest) {
@@ -99,6 +105,36 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void validateToken(String token) {
         jwtService.validateToken(token);
+    }
+
+    @Override
+    public LoginResponse getUserFromCache(Long userId) {
+        String key = "user:" + userId;
+
+        // TODO
+        //LoginResponse user = (UserDto) redisTemplate.opsForValue().get(key);
+        LoginResponse loginResponse = null;
+
+        if (loginResponse == null) {
+
+
+            UserCredential user = userService.findByUserIdWithPermission(Long.valueOf(userId)).orElseThrow();
+           // UserCredential user = userService.findByUsernameWithPermissions(userName).orElseThrow();
+            Set<String> permissions = user.getRoles().stream()
+                    .flatMap(role -> role.getPermissions().stream())
+                    .map(Permission::getName)
+                    .collect(Collectors.toSet());
+
+
+            loginResponse = new LoginResponse("", permissions);
+            loginResponse.setId(Long.valueOf(userId));
+            loginResponse.setId(user.getId());
+
+            // cache lại
+           // redisTemplate.opsForValue().set(key, user, Duration.ofMinutes(30));
+        }
+
+        return loginResponse;
     }
 
     private boolean checkExistingUsername(String username){

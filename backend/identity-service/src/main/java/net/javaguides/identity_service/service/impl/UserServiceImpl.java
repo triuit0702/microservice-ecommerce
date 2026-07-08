@@ -15,6 +15,7 @@ import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.repository.query.Param;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -108,6 +109,10 @@ public class UserServiceImpl implements UserService {
     @Override
     public Optional<UserCredential> findByUsernameWithPermissions(String username) {
         return userCredentialRepository.findByUsernameWithPermissions(username);
+    }
+
+    public Optional<UserCredential> findByUserIdWithPermission(Long userId) {
+        return userCredentialRepository.findByUserIdWithPermission(userId);
     }
 
     @Override

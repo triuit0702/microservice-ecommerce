@@ -14,16 +14,42 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useSelector, useDispatch } from "react-redux";
 import {
-    updateQuantity,
-    removeItem,
-    selectSubtotal,
+    removeItem
 } from "../features/cartSlice";
-import QuantitySelector from "../components/QuantitySelector";
+import { getCartByUserId } from "../services/CartService";
+import { useEffect, useState } from "react";
+import CartQuantitySelector from "../components/CartQuantitySelector";
+
+
+import { useNavigate } from "react-router-dom";
 
 export default function CartPage() {
-    const items = useSelector((state) => state.cart.items);
-    const subtotal = useSelector(selectSubtotal);
     const dispatch = useDispatch();
+
+    const user = useSelector(state => state.auth.user);
+
+    const [items, setItems] = useState([]);
+    const [total, setTotal] = useState(0);
+
+    const navigate = useNavigate();
+
+
+    useEffect(() => {
+        if (user?.id) {
+            getCartByUserId(user.id).then((res) => {
+                setItems(res.data.items);
+                const totalVal = res.data.items.reduce((sum, item) => {
+                    return sum + (item.price * item.quantity)
+                }, 0);
+                setTotal(totalVal);
+            }).catch((err) => {
+                console.log(err);
+            })
+        } else {
+            navigate(`/login`)
+        }
+
+    }, [user]);
 
     if (items.length === 0) {
         return (
@@ -35,6 +61,8 @@ export default function CartPage() {
         );
     }
 
+
+    //console.log(items);
     return (
         <Container sx={{ mt: 5 }}>
             <Typography variant="h4" gutterBottom>
@@ -45,56 +73,44 @@ export default function CartPage() {
                 {/* LEFT SIDE - CART ITEMS */}
                 <Grid item xs={12} md={8}>
                     {items.map((item) => (
-                        <Card key={item.id} sx={{ mb: 2 }}>
+                        <Card key={item.productId} sx={{ mb: 2 }}>
                             <CardContent sx={{ display: "flex", gap: 3, alignItems: "center" }}>
+                                {/* image url */}
                                 <Box
                                     component="img"
-                                    src={item.image}
+                                    src={item.imageUrl}
                                     alt={item.name}
                                     sx={{ width: 100, height: 100, objectFit: "cover" }}
                                 />
 
+                                {/* name variant and price */}
                                 <Box sx={{ flex: 1 }}>
-                                    <Typography variant="h6">{item.name}</Typography>
+                                    <Typography variant="h6" sx={{ maxWidth: 350 }}>{item.name}</Typography>
                                     <Typography color="text.secondary">
                                         ${item.price}
                                     </Typography>
                                 </Box>
 
-                                {/* <TextField
-                                    type="number"
-                                    size="small"
+                                {/* quantity */}
+                                {/* <QuantitySelector
                                     value={item.quantity}
-                                    onChange={(e) =>
-                                        dispatch(
-                                            updateQuantity({
-                                                id: item.id,
-                                                quantity: Number(e.target.value),
-                                            })
-                                        )
-                                    }
-                                    sx={{ width: 80 }}
-                                    inputProps={{ min: 1 }}
+                                    onChange={updateStock}
                                 /> */}
 
-
-                                {/* quantity */}
-                                <QuantitySelector
-                                    value={item.quantity}
-                                    onChange={(e) =>
-                                        dispatch(
-                                            updateQuantity({
-                                                id: item.id,
-                                                quantity: Number(e.target.value),
-                                            })
-                                        )}
+                                <CartQuantitySelector
+                                    productId={item.productId}
+                                    variantId={item.variantId}
+                                    userId={user?.id}
+                                    quantity={item.quantity}
                                 />
 
+                                {/* total price */}
 
                                 <Typography sx={{ width: 100, textAlign: "right" }}>
                                     ${(item.price * item.quantity).toFixed(2)}
                                 </Typography>
 
+                                {/* delete order button */}
                                 <IconButton
                                     color="error"
                                     onClick={() => dispatch(removeItem(item.id))}
@@ -117,14 +133,14 @@ export default function CartPage() {
                             sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}
                         >
                             <Typography>Subtotal</Typography>
-                            <Typography>${subtotal.toFixed(2)}</Typography>
+                            <Typography>${total}</Typography>
                         </Box>
 
                         <Button
                             variant="contained"
                             fullWidth
                             size="large"
-                            disabled={subtotal === 0}
+                            disabled={total === 0}
                         >
                             Checkout
                         </Button>

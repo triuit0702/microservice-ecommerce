@@ -5,6 +5,7 @@ package net.javaguides.identity_service.controller;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import net.javaguides.common_lib.dto.ApiResponse;
+import net.javaguides.identity_service.config.CustomUserDetails;
 import net.javaguides.identity_service.dto.AuthRequest;
 import net.javaguides.identity_service.dto.LoginResponse;
 import net.javaguides.identity_service.dto.SignUpRequest;
@@ -72,6 +73,8 @@ public class AuthController {
                 ResponseCookie cookie = ResponseCookie.from("token", generateToken)
                         .httpOnly(true)
                         .path("/")
+                        .sameSite("None")
+                        .secure(true)
                         .maxAge(Duration.ofMinutes(15))
                         .build();
                 response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
@@ -106,10 +109,11 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<ApiResponse<?>> getCurrentUser(@AuthenticationPrincipal UserDetails currentUser) {
+    public ResponseEntity<ApiResponse<?>> getCurrentUser(@AuthenticationPrincipal CustomUserDetails currentUser) {
         try {
             //UserDto userDto = userService.getUserByUsername(currentUser.getUsername());
-            LoginResponse loginResponse = getUserLogin(currentUser.getUsername());
+            //LoginResponse loginResponse = getUserLogin(currentUser.getUsername());
+            LoginResponse loginResponse = authService.getUserFromCache(currentUser.getId());
             loginResponse.setUserName(currentUser.getUsername());
             return new ResponseEntity<>(ApiResponse.success(loginResponse), HttpStatus.OK);
         } catch (Exception e) {
@@ -128,6 +132,19 @@ public class AuthController {
         LoginResponse loginResponse = new LoginResponse("", permissions);
         loginResponse.setId(user.getId());
         return loginResponse;
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<String>> logout(HttpServletResponse response) {
+        // Xoá cookie
+        ResponseCookie cookie = ResponseCookie.from("token", "")
+                .httpOnly(true)
+                .path("/")
+                .maxAge(0) // Xoá cookie ngay lập tức
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
+        return new ResponseEntity<>(ApiResponse.success("Logged out successfully"), HttpStatus.OK);
     }
 
 }

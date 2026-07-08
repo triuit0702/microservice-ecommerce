@@ -30,6 +30,15 @@ public interface UserCredentialRepository extends JpaRepository<UserCredential, 
     Optional<UserCredential> findByUsernameWithPermissions(@Param("username") String username);
 
     @Query("""
+           SELECT DISTINCT u
+           FROM UserCredential u
+           JOIN FETCH u.roles r
+           JOIN FETCH r.permissions
+           WHERE u.id = :userId and u.delFlg = false
+           """)
+    Optional<UserCredential> findByUserIdWithPermission(@Param("userId") Long userId);
+
+    @Query("""
       SELECT COUNT(u.id)
       FROM UserCredential u
       WHERE u.lastLoginAt >= :threshold

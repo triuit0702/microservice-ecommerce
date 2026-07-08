@@ -11,7 +11,6 @@ export default function Home() {
     useEffect(() => {
         fetchProducts()
             .then((data) => {
-                console.log('ket qua api: ' + data);
                 setProducts(data)
             })
             .catch(() => setError("Failed to load products"))
@@ -20,7 +19,6 @@ export default function Home() {
 
     if (loading) return <CircularProgress />;
     if (error) return <Alert severity="error">{error}</Alert>;
-    console.log("test: " + products);
     return (
 
         <Box

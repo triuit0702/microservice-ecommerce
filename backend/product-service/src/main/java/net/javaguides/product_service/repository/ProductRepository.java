@@ -16,4 +16,6 @@ public interface ProductRepository extends JpaRepository<Product, String>, JpaSp
     Page<Product> findAll(Pageable pageable);
 
     Page<Product> findByDelFlgFalse(Pageable pageable);
+
+    List<Product> findByIdIn(List<String> ids);
 }

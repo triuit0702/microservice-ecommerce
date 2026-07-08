@@ -18,6 +18,17 @@ const cartSlice = createSlice({
                 state.items.push(action.payload);
             }
         },
+        addListToCart(state, action) {
+            action.payload.forEach(item => {
+                const existing = state.items.find(i => i.id === item.id);
+
+                if (existing) {
+                    existing.quantity += item.quantity || 1;
+                } else {
+                    state.items.push(item);
+                }
+            });
+        },
         updateQuantity(state, action) {
             const { id, quantity } = action.payload;
             const item = state.items.find((i) => i.id === id);
@@ -30,13 +41,18 @@ const cartSlice = createSlice({
                 (i) => i.id !== action.payload
             );
         },
+        clearCart(state) {
+            state.items = [];
+        }
     },
 });
 
 export const {
     addToCart,
+    addListToCart,
     updateQuantity,
     removeItem,
+    clearCart
 } = cartSlice.actions;
 
 export default cartSlice.reducer;

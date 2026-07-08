@@ -3,6 +3,7 @@ package net.javaguides.product_service.service;
 import net.javaguides.product_service.dto.product.ProductResponseDto;
 import net.javaguides.product_service.dto.product_variant.ProductVariantResponseDto;
 import net.javaguides.product_service.dto.product_variant.UpdateProductVariantRequestDto;
+import net.javaguides.product_service.entity.Product;
 import net.javaguides.product_service.entity.ProductVariant;
 
 import java.math.BigDecimal;
@@ -20,5 +21,7 @@ public interface ProductVariantService {
     void saveProductVariant(ProductVariant productVariant);
     int deleteByProductId(String productId);
     int deleteAllByProductId(String productId);
+
+
 
 }

@@ -37,17 +37,6 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class ProductController {
     private final ProductService productService;
-//    @PostMapping
-//    public ResponseEntity<ApiResponse<?>> saveProduct(@ModelAttribute @Valid CreateProductRequestDto createProductRequestDto) {
-//        try {
-//            ProductResponseDto createdProductDto = productService.saveProduct(createProductRequestDto);
-//            ApiResponse<ProductResponseDto> apiResponse = new ApiResponse<>(createdProductDto, HttpStatus.CREATED.value());
-//            return new ResponseEntity<>(apiResponse, HttpStatus.CREATED);
-//        } catch (Exception e) {
-//            ApiResponse<String> response = new ApiResponse<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value());
-//            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
-//        }
-//    }
 
     @GetMapping
     public ResponseEntity<ApiResponse<?>> getProductList(@RequestParam(defaultValue = "0") int page,

@@ -10,11 +10,14 @@ const FormFileUpload = ({
     onUpload,
     preview,
     setPreview,
+    getValues,
     setUploading,
+    watch,
     setValue,
     ...rest
 }) => {
 
+    const imageUrl = watch("imageUrl");
 
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];
@@ -77,10 +80,10 @@ const FormFileUpload = ({
                 </div>
             )}
 
-            {preview && (
+            {imageUrl && (
                 <div style={{ marginTop: "10px" }}>
                     <img
-                        src={preview}
+                        src={imageUrl}
                         alt="Preview"
                         style={{
                             maxWidth: "200px",

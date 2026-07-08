@@ -9,6 +9,7 @@ import net.javaguides.product_service.dto.product.ProductRequest;
 import net.javaguides.product_service.dto.product.ProductResponseDto;
 import net.javaguides.product_service.dto.product.UpdateProductRequestDto;
 import net.javaguides.product_service.dto.product_variant.ProductVariantDto;
+import net.javaguides.product_service.entity.Product;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
@@ -27,4 +28,7 @@ public interface ProductService {
     List<ProductResponseDto> getProductsByIds(Set<String> productIds);
     Page<ProductResponseDto> searchProducts(String name, String categoryId, BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable);
     void createProduct(ProductRequest req,  MultipartFile image) throws IOException;
+
+    // get list product by list product id
+    List<Product> findAllByListProductId(List<String> ids);
 }

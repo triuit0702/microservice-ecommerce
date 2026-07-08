@@ -33,7 +33,7 @@ const schema = z.object({
 const VariantModal = ({ visible, onClose, serverErrors, onSave, variantData }) => {
 
 
-    const { register, handleSubmit, setValue, setError, reset, formState: { errors } } = useForm({
+    const { register, handleSubmit, setValue, watch, setError, reset, formState: { errors } } = useForm({
         defaultValues: {
             sku: '',
             size: '',
@@ -76,6 +76,7 @@ const VariantModal = ({ visible, onClose, serverErrors, onSave, variantData }) =
             // Edit mode
             reset(variantData)
             setValue("previewUrl", variantData.imageUrl);
+            setPreview(variantData.imageUrl);
 
         } else {
             // Add mode
@@ -190,6 +191,7 @@ const VariantModal = ({ visible, onClose, serverErrors, onSave, variantData }) =
                         preview={preview}
                         setPreview={setPreview}
                         setValue={setValue}
+                        watch={watch}
                     />
 
 

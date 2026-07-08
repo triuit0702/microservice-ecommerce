@@ -133,6 +133,7 @@ public class CloudinaryService {
 
         try {
             Map<String, Object> result = cloudinary.uploader().upload(file.getBytes(),  Map.of(
+                    "folder", "products",
                     "public_id", publicId,
                     "overwrite", true,
                     "invalidate", true

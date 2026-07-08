@@ -2,18 +2,14 @@ import { Box, IconButton, Typography } from "@mui/material";
 import RemoveIcon from "@mui/icons-material/Remove";
 import AddIcon from "@mui/icons-material/Add";
 
-export default function QuantitySelector({ value, onChange, min = 1, max = 20 }) {
-    //  const [quantity, setQuantity] = useState(1);
-    // const min = 1;
-    //const max = 20;
+export default function QuantitySelector({ value = 1, onChange, min = 1, max = 20 }) {
 
     const handleDecrease = () => {
-        //setQuantity((prev) => (prev > min ? prev - 1 : prev));
         if (value > min) onChange(value - 1);
     };
 
     const handleIncrease = () => {
-        // setQuantity((prev) => (prev < max ? prev + 1 : prev));
+        console.log("test test");
         if (value < max) onChange(value + 1);
     };
 

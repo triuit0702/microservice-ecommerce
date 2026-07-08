@@ -6,7 +6,6 @@ import axios from "axios";
 const API_BASE = "http://localhost:9191/api/v1/product/products";
 export const fetchProducts = async () => {
     const res = await axios.get(`${API_BASE}`);
-    console.log(res.data.data.content);
     return res.data.data.content;
 };
 

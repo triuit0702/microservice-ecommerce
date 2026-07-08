@@ -12,8 +12,6 @@ import net.javaguides.product_service.dto.product.*;
 import net.javaguides.product_service.dto.product_variant.ProductVariantDto;
 import net.javaguides.product_service.entity.Category;
 import net.javaguides.product_service.entity.ProductVariant;
-import net.javaguides.product_service.exception.BusinessException;
-import net.javaguides.product_service.exception.ErrorCode;
 import net.javaguides.product_service.redis.ProductRedis;
 import net.javaguides.product_service.entity.Product;
 import net.javaguides.product_service.exception.ProductException;
@@ -30,10 +28,7 @@ import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -124,16 +119,30 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public Page<ProductResponseDto> getProductList(int page, int size) {
        // Page<Product> productPage = productRepository.findAll(PageRequest.of(page, size));
-        Page<Product> productPage = productRepository.findByDelFlgFalse(PageRequest.of(page, size));
+        Page<Product> productPage = productRepository.findByDelFlgFalse(PageRequest.of(page, size ,
+                Sort.by(Sort.Direction.DESC, "createdAt")));
+
+//        List<ProductResponseDto> productDtos = productPage.getContent()
+//                .stream()
+//                .map(product -> {
+//                    ProductCacheDto cachedProduct = productDAO.findByProductId(product.getId());
+//
+//                    if(cachedProduct == null){
+//                       productDAO.save(product);
+//                    }
+//                    return modelMapper.map(product, ProductResponseDto.class);
+//                })
+//                .collect(Collectors.toList());
+
 
         List<ProductResponseDto> productDtos = productPage.getContent()
                 .stream()
                 .map(product -> {
-                    ProductCacheDto cachedProduct = productDAO.findByProductId(product.getId());
+                    //ProductCacheDto cachedProduct = productDAO.findByProductId(product.getId());
 
-                    if(cachedProduct == null){
-                       productDAO.save(product);
-                    }
+                  //  if(cachedProduct == null){
+                        productDAO.save(product);
+                   // }
                     return modelMapper.map(product, ProductResponseDto.class);
                 })
                 .collect(Collectors.toList());
@@ -175,7 +184,7 @@ public class ProductServiceImpl implements ProductService {
             return null;
         }
         //int nextVersion = product.getVersion() + 1;
-        String publicId = "products/" + product.getId() + "/v" + version;
+        String publicId =  product.getId() + "/v" + version;
         // upload main image product
         UploadResponse uploadResponse = cloudinaryService.uploadImage(imageFile, publicId);
         product.setImageUrl(uploadResponse.getUrl());
@@ -475,5 +484,9 @@ public class ProductServiceImpl implements ProductService {
         variant.setProduct(product);
         variant.setImagePublicId(vReq.getImagePublicId());
         return variant;
+    }
+
+    public List<Product> findAllByListProductId(List<String> ids) {
+        return productRepository.findByIdIn(ids);
     }
 }

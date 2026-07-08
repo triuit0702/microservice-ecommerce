@@ -105,6 +105,9 @@ const ProductForm = ({ visibleProductForm }) => {
 
     const product = watch();
 
+    console.log("product");
+    console.log(product);
+
 
     const onSubmit = async (data) => {
         setUploading(true);
@@ -326,7 +329,6 @@ const ProductForm = ({ visibleProductForm }) => {
                         label="Price"
                         name="price"
                         require={true}
-                        type="number"
                         register={register}
                         errors={errors}
                     />
