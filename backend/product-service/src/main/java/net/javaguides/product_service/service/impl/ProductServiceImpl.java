@@ -53,7 +53,7 @@ public class ProductServiceImpl implements ProductService {
     private final ProductRepository productRepository;
     private final ProductVariantRepository productVariantRepository;
     private final ModelMapper modelMapper;
-    private final ProductRedis productDAO;
+    private final ProductRedis productRedis;
     private final CloudinaryService cloudinaryService;
     private final CategoryService categoryService;
     private final ProductVariantService productVariantService;
@@ -96,7 +96,11 @@ public class ProductServiceImpl implements ProductService {
     }
 
 
-
+    /**
+     * Get product by id
+     * @param id
+     * @return
+     */
     @Override
     public ProductResponseDto getProductById(String id) {
         LOGGER.info("Cache miss for product id: {}", id);
@@ -114,41 +118,18 @@ public class ProductServiceImpl implements ProductService {
     }
 
 
-
-
+    /**
+     * Get product list with pagination
+     * @param page
+     * @param size
+     * @return
+     */
     @Override
     public Page<ProductResponseDto> getProductList(int page, int size) {
-       // Page<Product> productPage = productRepository.findAll(PageRequest.of(page, size));
         Page<Product> productPage = productRepository.findByDelFlgFalse(PageRequest.of(page, size ,
                 Sort.by(Sort.Direction.DESC, "createdAt")));
 
-//        List<ProductResponseDto> productDtos = productPage.getContent()
-//                .stream()
-//                .map(product -> {
-//                    ProductCacheDto cachedProduct = productDAO.findByProductId(product.getId());
-//
-//                    if(cachedProduct == null){
-//                       productDAO.save(product);
-//                    }
-//                    return modelMapper.map(product, ProductResponseDto.class);
-//                })
-//                .collect(Collectors.toList());
-
-
-        List<ProductResponseDto> productDtos = productPage.getContent()
-                .stream()
-                .map(product -> {
-                    //ProductCacheDto cachedProduct = productDAO.findByProductId(product.getId());
-
-                  //  if(cachedProduct == null){
-                        productDAO.save(product);
-                   // }
-                    return modelMapper.map(product, ProductResponseDto.class);
-                })
-                .collect(Collectors.toList());
-
-        return new PageImpl<>(productDtos, PageRequest.of(page, size), productPage.getTotalElements());
-
+        return productPage.map(product -> modelMapper.map(product, ProductResponseDto.class));
     }
 
     /**
@@ -183,7 +164,6 @@ public class ProductServiceImpl implements ProductService {
                 || imageFile.isEmpty()) {
             return null;
         }
-        //int nextVersion = product.getVersion() + 1;
         String publicId =  product.getId() + "/v" + version;
         // upload main image product
         UploadResponse uploadResponse = cloudinaryService.uploadImage(imageFile, publicId);
@@ -320,6 +300,13 @@ public class ProductServiceImpl implements ProductService {
         return modelMapper.map(productDTO, Product.class);
     }
 
+    /**
+     * Create ProductEvent from Product entity and stock quantity
+     * @param product
+     * @param stockQuantity
+     * @param method
+     * @return
+     */
     private ProductEvent createProductEvent(Product product, int stockQuantity, ProductMethod method) {
         ProductDTO productDTO = modelMapper.map(product, ProductDTO.class);
         productDTO.setStockQuantity(stockQuantity);
@@ -330,16 +317,18 @@ public class ProductServiceImpl implements ProductService {
         return productEvent;
     }
 
+    /**
+     * Create ProductEvent from ProductDTO and method
+     * @param productDTO
+     * @param method
+     * @return
+     */
     private ProductEvent createProductEvent(ProductDTO productDTO, ProductMethod method) {
         ProductEvent productEvent = new ProductEvent();
         productEvent.setProductDTO(productDTO);
         productEvent.setMethod(method);
         return productEvent;
     }
-
-
-
-
 
 
     /**
@@ -475,6 +464,10 @@ public class ProductServiceImpl implements ProductService {
      */
     private ProductVariant buildProductVariant(ProductVariantDto vReq, Product product) {
         ProductVariant variant = new ProductVariant();
+        if (Objects.nonNull(vReq.getId())) {
+            // case update variant
+            variant.setId(vReq.getId());
+        }
         variant.setSku(vReq.getSku());
         variant.setPrice(vReq.getPrice());
         variant.setColor(vReq.getColor());

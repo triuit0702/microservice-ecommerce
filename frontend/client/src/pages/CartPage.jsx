@@ -16,7 +16,7 @@ import { useSelector, useDispatch } from "react-redux";
 import {
     removeItem
 } from "../features/cartSlice";
-import { getCartByUserId } from "../services/CartService";
+import { getCartByUserId, removeCartItemSelected } from "../services/CartService";
 import { useEffect, useState } from "react";
 import CartQuantitySelector from "../components/CartQuantitySelector";
 
@@ -51,6 +51,32 @@ export default function CartPage() {
 
     }, [user]);
 
+
+    function getListCartItem(userId) {
+        getCartByUserId(userId).then((res) => {
+            setItems(res.data.items);
+            const totalVal = res.data.items.reduce((sum, item) => {
+                return sum + (item.price * item.quantity)
+            }, 0);
+            setTotal(totalVal);
+        }).catch((err) => {
+            console.log(err);
+        })
+    }
+
+    const deleteItem = async (productId, variantId) => {
+
+        const cartItem = {
+            variantId: variantId,
+            productId: productId,
+            userId: user.id,
+        }
+        await removeCartItemSelected(cartItem);
+
+        removeItem(productId);
+        getListCartItem(user.id);
+    }
+
     if (items.length === 0) {
         return (
             <Container sx={{ mt: 5 }}>
@@ -60,7 +86,6 @@ export default function CartPage() {
             </Container>
         );
     }
-
 
     //console.log(items);
     return (
@@ -113,7 +138,7 @@ export default function CartPage() {
                                 {/* delete order button */}
                                 <IconButton
                                     color="error"
-                                    onClick={() => dispatch(removeItem(item.id))}
+                                    onClick={() => deleteItem(item.productId, item.variantId)}
                                 >
                                     <DeleteIcon />
                                 </IconButton>
@@ -141,6 +166,7 @@ export default function CartPage() {
                             fullWidth
                             size="large"
                             disabled={total === 0}
+                            onClick={() => navigate(`/checkout`)}
                         >
                             Checkout
                         </Button>

@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 @Data
 public class ProductVariantDto {
 
+    private Long id;
     @NotBlank (message = "sku is required")
     private String sku;
 

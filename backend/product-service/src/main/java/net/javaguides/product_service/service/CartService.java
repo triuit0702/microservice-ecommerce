@@ -52,7 +52,21 @@ public class CartService {
         redisTemplate.opsForHash()
                 .increment(key, field, request.getQuantity());
         // TTL 7 ngày → tự xoá cart cũ
-        redisTemplate.expire(key, Duration.ofDays(7));
+        //redisTemplate.expire(key, Duration.ofDays(7));
+    }
+
+    /**
+     * remove cart item selected
+     * @param request
+     */
+    public void removeCartItemSelected(AddCartRequestDto request) {
+        String key = buildKey(request.getUserId());
+        String field = request.getProductId()
+                + ":" + request.getVariantId();
+
+        // remove item from redis hash
+        redisTemplate.opsForHash()
+                .delete(key, field);
     }
 
     // add stock to redis cache
@@ -70,16 +84,18 @@ public class CartService {
     }
 
     public CartResponseDto getCart(Long userId) {
-        //return redisTemplate.opsForHash().entries(buildKey(userId));
+        // get key : cart:UserId
         String key = buildKey(userId);
 
 
 
+        // get all entries in hash redis by key
         Map<Object, Object> entries = redisTemplate.opsForHash().entries(buildKey(userId));
         if (entries.isEmpty()) {
             return new CartResponseDto(userId.toString(), List.of());
         }
 
+        // cau truc cua redis: key = cart:userId, field = productId:variantId, value = quantity
         // parse redis data
         List<CartItemDto> items = entries.entrySet().stream()
                 .map(e -> {
@@ -87,32 +103,23 @@ public class CartService {
                     String[] parts = e.getKey().toString().split(":");
                     String productId = parts[0];
                     Long variantId = Long.parseLong(parts[1]);
-                 //   String color = parts[2];
-                   // String imageUrl = parts[3];
                     Integer quantity = Integer.parseInt(e.getValue().toString());
 
                     CartItemDto dto = new CartItemDto();
                     dto.setProductId(productId);
                     dto.setVariantId(variantId);
-                   // dto.setColor(color);
                     dto.setQuantity(quantity);
                     return dto;
-                   // return new CartItemDto(productId, variantId, color, quantity,imageUrl);
                 })
                 .toList();
 
         // get list variant id
-//        List<String> productIdList = items.stream()
-//                .map(CartItemDto::getProductId)
-//                .distinct()
-//                .toList();
         List<Long> variantIdList = items.stream()
                 .map(CartItemDto::getVariantId)
                 .distinct()
                 .toList();
 
-        // get list product
-        //List<Product> productList = productService.findAllByListProductId(productIdList);
+        // get list cart item view from db
         List<CartItemView> cartItemViewList = productVariantRepository.getCartItems(variantIdList);
 
         Map<Long, CartItemView> cartItemMap = cartItemViewList.stream()
