@@ -22,9 +22,11 @@ export default function Checkout() {
         if (user?.id) {
             getCartByUserId(user.id).then((res) => {
                 setItems(res.data.items);
+
                 const totalVal = res.data.items.reduce((sum, item) => {
                     return sum + (item.price * item.quantity)
                 }, 0);
+
                 setTotal(totalVal);
             }).catch((err) => {
                 console.log(err);
@@ -71,7 +73,7 @@ export default function Checkout() {
 
                             <TableBody>
                                 {items.map((item) => (
-                                    <TableRow key={item.productId}>
+                                    <TableRow key={item.id}>
 
                                         {/* Image */}
                                         <TableCell align="center">

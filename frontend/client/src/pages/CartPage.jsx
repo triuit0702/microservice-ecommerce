@@ -64,16 +64,17 @@ export default function CartPage() {
         })
     }
 
-    const deleteItem = async (productId, variantId) => {
+    const deleteItem = async (item) => {
 
         const cartItem = {
-            variantId: variantId,
-            productId: productId,
+            variantId: item.variantId,
+            productId: item.id,
             userId: user.id,
         }
         await removeCartItemSelected(cartItem);
 
-        removeItem(productId);
+        dispatch(removeItem({ id: item.id }))
+        // removeItem(item);
         getListCartItem(user.id);
     }
 
@@ -98,7 +99,7 @@ export default function CartPage() {
                 {/* LEFT SIDE - CART ITEMS */}
                 <Grid item xs={12} md={8}>
                     {items.map((item) => (
-                        <Card key={item.productId} sx={{ mb: 2 }}>
+                        <Card key={item.id} sx={{ mb: 2 }}>
                             <CardContent sx={{ display: "flex", gap: 3, alignItems: "center" }}>
                                 {/* image url */}
                                 <Box
@@ -123,7 +124,7 @@ export default function CartPage() {
                                 /> */}
 
                                 <CartQuantitySelector
-                                    productId={item.productId}
+                                    productId={item.id}
                                     variantId={item.variantId}
                                     userId={user?.id}
                                     quantity={item.quantity}
@@ -138,7 +139,7 @@ export default function CartPage() {
                                 {/* delete order button */}
                                 <IconButton
                                     color="error"
-                                    onClick={() => deleteItem(item.productId, item.variantId)}
+                                    onClick={() => deleteItem(item)}
                                 >
                                     <DeleteIcon />
                                 </IconButton>

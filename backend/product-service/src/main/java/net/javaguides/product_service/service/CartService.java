@@ -83,6 +83,11 @@ public class CartService {
 
     }
 
+    /**
+     * get cart by userId
+     * @param userId
+     * @return
+     */
     public CartResponseDto getCart(Long userId) {
         // get key : cart:UserId
         String key = buildKey(userId);
@@ -106,7 +111,7 @@ public class CartService {
                     Integer quantity = Integer.parseInt(e.getValue().toString());
 
                     CartItemDto dto = new CartItemDto();
-                    dto.setProductId(productId);
+                    dto.setId(productId);
                     dto.setVariantId(variantId);
                     dto.setQuantity(quantity);
                     return dto;

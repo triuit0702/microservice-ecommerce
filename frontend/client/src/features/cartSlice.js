@@ -8,6 +8,12 @@ const cartSlice = createSlice({
     name: "cart",
     initialState,
     reducers: {
+        /**
+         * state : đang lưu list product cũ  ??? chưa hiểu lắm cần check lai 
+         * còn action.payload là product mới (là dự liệu bạn truyển vào khi dispatch)
+         * @param {*} state 
+         * @param {*} action 
+         */
         addToCart(state, action) {
             const existing = state.items.find(
                 (i) => i.id === action.payload.id
@@ -38,7 +44,7 @@ const cartSlice = createSlice({
         },
         removeItem(state, action) {
             state.items = state.items.filter(
-                (i) => i.id !== action.payload
+                (i) => i.id !== action.payload.id
             );
         },
         clearCart(state) {
