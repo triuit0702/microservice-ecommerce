@@ -2,13 +2,10 @@ package net.javaguides.product_service.service;
 
 
 
-import net.javaguides.common_lib.dto.product.ProductDTO;
 import net.javaguides.product_service.dto.product.CreateProductRequestDto;
-import net.javaguides.product_service.dto.ProductStockResponse;
 import net.javaguides.product_service.dto.product.ProductRequest;
 import net.javaguides.product_service.dto.product.ProductResponseDto;
 import net.javaguides.product_service.dto.product.UpdateProductRequestDto;
-import net.javaguides.product_service.dto.product_variant.ProductVariantDto;
 import net.javaguides.product_service.entity.Product;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

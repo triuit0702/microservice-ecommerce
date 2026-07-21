@@ -27,7 +27,8 @@ const schema = z.object({
         .regex(/^\d+(\.\d{1,2})?$/, "Stock must be a valid decimal (max 2 decimals)"),
     imageUrl: z.string().min(1, "Image is required"),
     imagePublicId: z.string().optional(),
-    previewUrl: z.string().optional()
+    previewUrl: z.string().optional(),
+    id: z.number().optional()
 });
 
 const VariantModal = ({ visible, onClose, serverErrors, onSave, variantData }) => {
@@ -35,6 +36,7 @@ const VariantModal = ({ visible, onClose, serverErrors, onSave, variantData }) =
 
     const { register, handleSubmit, setValue, watch, setError, reset, formState: { errors } } = useForm({
         defaultValues: {
+            id: '',
             sku: '',
             size: '',
             color: '',
@@ -122,6 +124,15 @@ const VariantModal = ({ visible, onClose, serverErrors, onSave, variantData }) =
             <CForm onSubmit={handleSubmit(handleSave)}>
                 <CModalHeader>{variantData ? 'Edit Variant' : 'Add Variant'}</CModalHeader>
                 <CModalBody>
+
+                    {/* Hidden field để giữ id khi edit */}
+                    {variantData && (
+                        <CFormInput
+                            type="hidden"
+                            register={register("id")}
+                        />
+                    )}
+
                     {/* SKU là mã định danh DUY NHẤT cho từng sản phẩm / từng variant trong kho */}
                     <FormInput
                         label="Sku"

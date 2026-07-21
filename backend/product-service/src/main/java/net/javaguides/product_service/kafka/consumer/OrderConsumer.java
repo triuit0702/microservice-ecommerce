@@ -6,15 +6,16 @@ import net.javaguides.common_lib.dto.order.OrderEvent;
 import net.javaguides.common_lib.dto.order.OrderItemDTO;
 import net.javaguides.product_service.entity.ProductVariant;
 import net.javaguides.product_service.exception.InsufficientStockException;
+import net.javaguides.product_service.kafka.producer.InventoryProducer;
 import net.javaguides.product_service.service.ProductVariantService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
@@ -24,6 +25,7 @@ public class OrderConsumer {
     private static final Logger LOGGER = LoggerFactory.getLogger(OrderConsumer.class);
 
     private final ProductVariantService productVariantService;
+    private final InventoryProducer inventoryProducer;
 
     @KafkaListener(topics = "${spring.kafka.create-order-topic.name}", groupId = "${spring.kafka.consumer.group-id}")
     @Transactional
@@ -35,39 +37,74 @@ public class OrderConsumer {
                 .map(OrderItemDTO::getVariantId)
                 .collect(Collectors.toSet());
 
-        // Lấy danh sách các ProductVariant theo variantIds
-        Map<Long, ProductVariant> variantMap = productVariantService.getProductVariantByIds(variantIds).stream()
+        // get list product variant by variantIds
+        List<ProductVariant> variants = Optional.ofNullable(
+                productVariantService.getProductVariantByIds(variantIds)
+        ).orElse(Collections.emptyList());
+
+        if (CollectionUtils.isEmpty(variants)) {
+            return;
+        }
+
+        // create map variantId -> ProductVariant for easy access
+        Map<Long, ProductVariant> variantMap = variants.stream()
                 .collect(Collectors.toMap(ProductVariant::getId, variant -> variant));
 
-        // Cập nhật tồn kho sản phẩm
-        for (OrderItemDTO orderItem : orderDTO.getOrderItems()) {
-            updateStockForVariant(orderItem, variantMap);
-        }
-
-        LOGGER.info("Successfully processed OrderEvent for orderId: {}", orderDTO.getOrderId());
+        // update stock
+        updateStock(orderDTO, variantMap);
     }
 
-    private void updateStockForVariant(OrderItemDTO orderItem, Map<Long, ProductVariant> variantMap) {
-        Long variantId = orderItem.getVariantId();
-        ProductVariant productVariant = variantMap.get(variantId);
+    /**
+     * Update the stock quantity of product variants based on the order items.
+     *
+     * @param orderDTO   The order data transfer object containing order items.
+     * @param variantMap A map of variant IDs to ProductVariant objects for easy access.
+     */
+    private void updateStock(OrderDTO orderDTO, Map<Long, ProductVariant> variantMap) {
 
-        if (productVariant == null) {
-            LOGGER.error("ProductVariant with id {} not found.", variantId);
-            throw new RuntimeException("ProductVariant with id " + variantId + " not found.");
+        List<ProductVariant> productVariantList = new ArrayList<>();
+        for (OrderItemDTO orderItem : orderDTO.getOrderItems()) {
+
+            Long variantId = orderItem.getVariantId();
+            ProductVariant productVariant = variantMap.get(variantId);
+
+            if (productVariant == null) {
+                LOGGER.error("ProductVariant with id {} not found.", variantId);
+                throw new RuntimeException("ProductVariant with id " + variantId + " not found.");
+            }
+
+            int requiredQuantity = orderItem.getQuantity();
+            int currentStock = productVariant.getStockQuantity();
+            int updatedStock = currentStock - requiredQuantity;
+
+            if (updatedStock < 0) {
+                LOGGER.error("Insufficient stock for variant {}. Required: {}, Available: {}", variantId, requiredQuantity, currentStock);
+                sendOrderStatusUpdate(orderDTO,"CANCEL");
+                throw new InsufficientStockException("Insufficient stock for variant " + variantId);
+            }
+
+            productVariant.setStockQuantity(updatedStock);
+            productVariantList.add(productVariant);
         }
 
-        int requiredQuantity = orderItem.getQuantity();
-        int currentStock = productVariant.getStockQuantity();
-        int updatedStock = currentStock - requiredQuantity;
+        productVariantService.saveAllListVariant(productVariantList);
 
-        if (updatedStock < 0) {
-            LOGGER.error("Insufficient stock for variant {}. Required: {}, Available: {}", variantId, requiredQuantity, currentStock);
-            throw new InsufficientStockException("Insufficient stock for variant " + variantId);
-        }
+        // push event to kafka for order status update
+        sendOrderStatusUpdate(orderDTO,"RESERVED");
 
-        productVariant.setStockQuantity(updatedStock);
-        productVariantService.saveProductVariant(productVariant);
+    }
 
-        LOGGER.info("Updated stock for variant {}. New stock: {}", variantId, updatedStock);
+    /**
+     * Send an order status update to the Kafka topic.
+     *
+     * @param orderDTO The order data transfer object containing order details.
+     * @param status   The new status of the order (e.g., "RESERVED", "CANCEL").
+     */
+    private void sendOrderStatusUpdate(OrderDTO orderDTO, String status) {
+        OrderDTO updatedOrderDTO = new OrderDTO();
+        updatedOrderDTO.setOrderId(orderDTO.getOrderId());
+        updatedOrderDTO.setStatus(status);
+
+        inventoryProducer.sendOrderStatusUpdate(updatedOrderDTO);
     }
 }

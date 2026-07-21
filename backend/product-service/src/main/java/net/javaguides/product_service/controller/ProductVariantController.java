@@ -17,7 +17,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/v1/products/variants")
+@RequestMapping("/api/v1/product/variants")
 @RequiredArgsConstructor
 public class ProductVariantController {
 

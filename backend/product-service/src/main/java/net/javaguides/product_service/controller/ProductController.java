@@ -101,8 +101,8 @@ public class ProductController {
 
 
 
-    @GetMapping("/products")
-    public ResponseEntity<ApiResponse<?>> getProductsByIds(@RequestParam("ids") Set<String> productIds) {
+    @GetMapping("/by-ids")
+    public ResponseEntity<ApiResponse<List<ProductResponseDto>>> getProductsByIds(@RequestParam("ids") Set<String> productIds) {
         try {
             List<ProductResponseDto> productDTOs = productService.getProductsByIds(productIds);
             return new ResponseEntity<>(ApiResponse.success(productDTOs), HttpStatus.OK);

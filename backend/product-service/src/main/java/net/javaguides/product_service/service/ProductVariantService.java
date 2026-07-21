@@ -22,6 +22,10 @@ public interface ProductVariantService {
     int deleteByProductId(String productId);
     int deleteAllByProductId(String productId);
 
-
+    /**
+     * Save list of product variants to the database
+     * @param productVariants: List of ProductVariant entities to be saved
+     */
+    void saveAllListVariant(List<ProductVariant> productVariants);
 
 }

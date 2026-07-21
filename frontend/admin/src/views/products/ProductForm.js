@@ -105,21 +105,20 @@ const ProductForm = ({ visibleProductForm }) => {
 
     const product = watch();
 
-    console.log("product");
-    console.log(product);
 
 
     const onSubmit = async (data) => {
         setUploading(true);
         clearErrors("variants");
         const formData = buildFormData(data);
+        console.log("check data");
+        console.log(formData);
+        //return;
         try {
             if (data.id) {
                 await updateProduct(data.id, formData);
-                // alert('Product updated successfully!');
             } else {
                 await createProduct(formData);
-                //alert('Product created successfully!');
             }
 
         } catch (error) {

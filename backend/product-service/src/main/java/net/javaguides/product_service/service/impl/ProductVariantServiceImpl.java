@@ -165,6 +165,14 @@ public class ProductVariantServiceImpl implements ProductVariantService {
         return total;
     }
 
+    /**
+     * Lưu danh sách ProductVariant vào cơ sở dữ liệu
+     * @param productVariants: Danh sách các ProductVariant cần lưu
+     */
+    @Override
+    public void saveAllListVariant(List<ProductVariant> productVariants) {
+        productVariantRepository.saveAll(productVariants);
+    }
 
 
     @Override

@@ -16,4 +16,5 @@ public class OrderItemDTO {
     private Integer quantity;
     private BigDecimal price;
     private Long variantId;
+    private String color;
 }
