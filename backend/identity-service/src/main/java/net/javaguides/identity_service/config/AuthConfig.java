@@ -58,7 +58,7 @@ public class AuthConfig {
                         .requestMatchers(
                                 //"/api/v1/auth/register", "/api/v1/auth/token", "/api/v1/auth/validate",
                                 "/api/v1/user/auth/register",
-                                "/api/v1/user/auth/token",
+                                "/api/v1/user/auth/login",
                                 "/api/v1/user/auth/validate",
                                 "/swagger-ui/**","/v2/api-docs",
                                 "/swagger-resources",

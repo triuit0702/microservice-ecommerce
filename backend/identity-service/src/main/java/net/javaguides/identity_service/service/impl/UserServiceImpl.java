@@ -116,7 +116,11 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void updateLastLoginDate(UserCredential user) {
+    public void updateLastLoginDate(Long userId) {
+        UserCredential user = userCredentialRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with userId: " + userId, HttpStatus.NOT_FOUND));
+
+
         user.setLastLoginAt(LocalDateTime.now());
         userCredentialRepository.save(user);
     }

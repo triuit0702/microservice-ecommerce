@@ -16,5 +16,5 @@ public interface UserService {
     void upateUser(SignUpRequest signUpRequest);
     Optional<UserCredential> findByUsernameWithPermissions(String username);
     Optional<UserCredential> findByUserIdWithPermission(Long userId);
-    void updateLastLoginDate(UserCredential user);
+    void updateLastLoginDate(Long userId);
 }
