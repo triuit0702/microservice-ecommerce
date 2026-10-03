@@ -1,13 +1,12 @@
-import { Box, Button, Card, CardContent, Container, Divider, FormControlLabel, Grid, IconButton, List, ListItem, Paper, Radio, RadioGroup, Step, StepLabel, Stepper, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography } from "@mui/material";
-import { getCartByUserId } from "../services/CartService";
+import { Alert, Box, Button, Card, CardContent, Container, Divider, FormControlLabel, Grid, IconButton, List, ListItem, Paper, Radio, RadioGroup, Step, StepLabel, Stepper, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography } from "@mui/material";
+import { deleteCartByUserId, getCartByUserId } from "../services/CartService";
 import { useEffect, useState } from "react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import CartQuantitySelector from "../components/CartQuantitySelector";
 import { useForm } from "react-hook-form";
 import CommonTextField from "../components/FormValidate/CommonTextField";
 import { orderService } from "../services/CheckoutService";
-
+import { clearCart } from "../features/cartSlice";
 
 
 export default function Checkout() {
@@ -19,11 +18,14 @@ export default function Checkout() {
         }
     });
 
+    const dispatch = useDispatch();
     const user = useSelector(state => state.auth.user);
 
     const [items, setItems] = useState([]);
 
-    const [total, setTotal] = useState(0);
+
+    // error message 
+    const [globalError, setGlobalError] = useState(null);
 
     const navigate = useNavigate();
 
@@ -33,11 +35,6 @@ export default function Checkout() {
             getCartByUserId(user.id).then((res) => {
                 setItems(res.data.items);
 
-                const totalVal = res.data.items.reduce((sum, item) => {
-                    return sum + (item.price * item.quantity)
-                }, 0);
-
-                setTotal(totalVal);
             }).catch((err) => {
                 console.log(err);
             })
@@ -72,8 +69,27 @@ export default function Checkout() {
             grandTotal: grandTotal,
             orderItems
         };
-        // execute submit
-        await orderService(order);
+
+
+        try {
+            // execute submit
+            await orderService(order);
+
+            // clear cart in state react
+            dispatch(
+                clearCart()
+            )
+
+            // delete list cart item in redis by userId
+            await deleteCartByUserId(user.id);
+            navigate(`/order-success`)
+
+
+        } catch (error) {
+            let resError = error.response.data.error;
+            setGlobalError(resError.message);
+        }
+
     }
 
     return (
@@ -81,6 +97,16 @@ export default function Checkout() {
             <Container sx={{ mt: 0, mb: 10 }}>
                 <Grid >
 
+
+                    {/* ✅ Hiển thị lỗi ở đầu trang */}
+                    {globalError && (
+                        <Alert
+                            severity="error"
+                        //onClose={() => setFieldErrors({})}
+                        >
+                            <div >{globalError}</div>
+                        </Alert>
+                    )}
 
                     {/* Shipping Info đặt lên đầu */}
                     <Grid >

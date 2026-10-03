@@ -5,6 +5,7 @@ import Navbar from "./components/Navbar";
 import React, { useEffect } from "react";
 import { useDispatch } from 'react-redux';
 import { serviceGetMe } from "./services/AuthService";
+import OrderSuccess from "./pages/OrderSuccess";
 
 
 const Home = React.lazy(() => import("./pages/Home"));
@@ -59,6 +60,10 @@ function App() {
 
           <Route path="/login" element={<Login />} />
           <Route path="/checkout" element={<Checkout />} />
+
+          <Route path="/order-success" element={<OrderSuccess />} />
+
+
         </Routes>
       </Container>
     </>

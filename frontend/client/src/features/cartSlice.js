@@ -9,8 +9,8 @@ const cartSlice = createSlice({
     initialState,
     reducers: {
         /**
-         * state : đang lưu list product cũ  ??? chưa hiểu lắm cần check lai 
-         * còn action.payload là product mới (là dự liệu bạn truyển vào khi dispatch)
+         * state : state hiện tại của cart
+         * còn action.payload : data truyền vào từ dispatch (Cái gì truyền vào addToCart(...) → nằm trong action.payload.)
          * @param {*} state 
          * @param {*} action 
          */

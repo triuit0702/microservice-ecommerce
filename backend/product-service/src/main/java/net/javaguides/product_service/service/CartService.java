@@ -204,4 +204,12 @@ public class CartService {
         Long result = redisTemplate.execute(redisScript, keys, args);
         return result.intValue();
     }
+
+    /**
+     * delete cart by userId
+     * @param userId
+     */
+    public void deleteCart(Long userId) {
+        redisTemplate.delete(buildKey(userId));
+    }
 }

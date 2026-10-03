@@ -37,6 +37,12 @@ public class CartController {
     @PostMapping("/remove")
     public ResponseEntity<?> removeCartItem(@RequestBody AddCartRequestDto request) {
         cartService.removeCartItemSelected(request);
-        return ResponseEntity.ok("Removed from cart");
+        return ResponseEntity.ok("Removed item from cart successfully");
+    }
+
+    @DeleteMapping("/{userId}")
+    public ResponseEntity<?> deleteCart(@PathVariable Long userId) {
+        cartService.deleteCart(userId);
+        return ResponseEntity.ok("Deleted cart successfully");
     }
 }
