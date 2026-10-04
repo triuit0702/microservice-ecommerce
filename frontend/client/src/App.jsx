@@ -2,10 +2,9 @@ import { useLocation, Routes, Route } from "react-router-dom";
 import { Container } from "@mui/material";
 import Navbar from "./components/Navbar";
 
-import React, { useEffect } from "react";
-import { useDispatch } from 'react-redux';
-import { serviceGetMe } from "./services/AuthService";
+import React from "react";
 import OrderSuccess from "./pages/OrderSuccess";
+import ProtectedRoute from "./pages/ProtectedRoute";
 
 
 const Home = React.lazy(() => import("./pages/Home"));
@@ -18,34 +17,9 @@ function App() {
   const location = useLocation();
   const hideNavbar = location.pathname === "/login";
 
-  const dispatch = useDispatch();
 
 
 
-
-  useEffect(() => {
-
-
-    serviceGetMe().then((res) => {
-
-      dispatch({
-        type: 'LOGIN_SUCCESS',
-        payload: res.data.data
-      })
-    }).catch((err) => {
-      console.log(err);
-      dispatch({
-        type: 'LOGOUT',
-        payload: null
-      })
-    })
-
-
-  }, []);
-
-  // useEffect(() => {
-  //   // call api to get user from cookie
-  // },[])
 
   return (
     <>
@@ -56,12 +30,25 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/products/:id" element={<ProductDetail />} />
 
-          <Route path="/cart" element={<CartPage />} />
+
 
           <Route path="/login" element={<Login />} />
+
+
+          {/* <Route path="/cart" element={<CartPage />} />
           <Route path="/checkout" element={<Checkout />} />
 
-          <Route path="/order-success" element={<OrderSuccess />} />
+          <Route path="/order-success" element={<OrderSuccess />} /> */}
+
+
+          {/* Cần login */}
+          <Route element={<ProtectedRoute />}>
+
+            <Route path="/cart" element={<CartPage />} />
+            <Route path="/checkout" element={<Checkout />} />
+
+            <Route path="/order-success" element={<OrderSuccess />} />
+          </Route>
 
 
         </Routes>

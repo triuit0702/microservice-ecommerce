@@ -10,12 +10,23 @@ import { clearCart } from "../features/cartSlice";
 
 
 export default function Checkout() {
-    const { control, handleSubmit } = useForm({
-        defaultValues: {
-            address: '',
-            phone: '',
-            email: ''
+
+    const getCheckoutForm = () => {
+        const saved = sessionStorage.getItem("checkout_form");
+
+        if (!saved) {
+            return {
+                address: "",
+                phone: "",
+                email: "",
+            };
         }
+
+        return JSON.parse(saved);
+    };
+
+    const { control, handleSubmit } = useForm({
+        defaultValues: getCheckoutForm()
     });
 
     const dispatch = useDispatch();
@@ -28,6 +39,8 @@ export default function Checkout() {
     const [globalError, setGlobalError] = useState(null);
 
     const navigate = useNavigate();
+
+    const CHECKOUT_FORM_KEY = "checkout_form";
 
 
     useEffect(() => {
@@ -71,6 +84,12 @@ export default function Checkout() {
         };
 
 
+        // keep info user temporary
+        sessionStorage.setItem(
+            CHECKOUT_FORM_KEY,
+            JSON.stringify(data)
+        );
+
         try {
             // execute submit
             await orderService(order);
@@ -79,6 +98,10 @@ export default function Checkout() {
             dispatch(
                 clearCart()
             )
+
+            // Thành công → xóa dữ liệu tạm
+            sessionStorage.removeItem(CHECKOUT_FORM_KEY);
+
 
             // delete list cart item in redis by userId
             await deleteCartByUserId(user.id);
@@ -118,21 +141,18 @@ export default function Checkout() {
                                 label="Địa chỉ"
                                 rules={{ required: "Địa chỉ là bắt buộc" }}
                             />
-                            {/* <TextField fullWidth label="Địa chỉ" margin="normal" /> */}
                             <CommonTextField
                                 name="phone"
                                 control={control}
                                 label="Số điện thoại"
                                 rules={{ required: "Số đien thoại là bắt buộc" }}
                             />
-                            {/* <TextField fullWidth label="Số điện thoại" margin="normal" /> */
-                                <CommonTextField
-                                    name="email"
-                                    control={control}
-                                    label="Email"
-                                    rules={{ required: "Email là bắt buộc" }}
-                                />}
-                            {/* <TextField fullWidth label="Email" margin="normal" /> */}
+                            <CommonTextField
+                                name="email"
+                                control={control}
+                                label="Email"
+                                rules={{ required: "Email là bắt buộc" }}
+                            />}
                         </Paper>
 
                         {/* Cart Items */}
