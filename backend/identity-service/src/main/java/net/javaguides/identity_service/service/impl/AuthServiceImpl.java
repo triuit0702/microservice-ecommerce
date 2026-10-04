@@ -174,7 +174,7 @@ public class AuthServiceImpl implements AuthService {
                 .path("/")
                 .sameSite("None")
                 .secure(true)
-                .maxAge(Duration.ofMinutes(1))
+                .maxAge(Duration.ofMinutes(15))
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
