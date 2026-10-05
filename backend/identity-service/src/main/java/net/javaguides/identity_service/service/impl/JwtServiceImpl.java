@@ -19,21 +19,6 @@ public class JwtServiceImpl implements JwtService {
     public static final String SECRET = "5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437";
 
     @Override
-    public void validateToken(String token) {
-        try {
-            Jwts.parser().verifyWith(getSecretKey()).build().parseSignedClaims(token);
-        } catch(SecurityException | MalformedJwtException e) {
-            throw new AuthenticationCredentialsNotFoundException("JWT was expired or incorrect");
-        } catch (ExpiredJwtException e) {
-            throw new AuthenticationCredentialsNotFoundException("Expired JWT token.");
-        } catch (UnsupportedJwtException e) {
-            throw new AuthenticationCredentialsNotFoundException("Unsupported JWT token.");
-        } catch (IllegalArgumentException e) {
-            throw new AuthenticationCredentialsNotFoundException("JWT token compact of handler are invalid.");
-        }
-    }
-
-    @Override
     public String generateToken(Authentication authentication) {
         CustomUserDetails userPrincipal = (CustomUserDetails) authentication.getPrincipal();
         List<String> roles = userPrincipal.getRoleNames();

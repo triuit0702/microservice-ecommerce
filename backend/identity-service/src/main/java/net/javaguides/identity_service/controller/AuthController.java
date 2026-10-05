@@ -10,7 +10,6 @@ import net.javaguides.identity_service.dto.AuthRequest;
 import net.javaguides.identity_service.dto.CurrentUserDto;
 import net.javaguides.identity_service.dto.LoginResponse;
 import net.javaguides.identity_service.dto.SignUpRequest;
-import net.javaguides.identity_service.exception.AuthException;
 import net.javaguides.identity_service.service.AuthService;
 import net.javaguides.identity_service.service.UserCacheService;
 import net.javaguides.identity_service.service.UserService;
@@ -22,7 +21,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-
+//  Authen for client
 @RestController
 @RequestMapping("api/v1/user/auth")
 @RequiredArgsConstructor
@@ -32,18 +31,15 @@ public class AuthController {
     private final UserService userService;
     private final UserCacheService userCacheService;
 
+    /**
+     * register new user
+     * @param signUpRequest
+     * @return
+     */
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<String>> addNewUser(@RequestBody SignUpRequest signUpRequest) {
-        try {
-            String message = authService.saveUser(signUpRequest);
-            return new ResponseEntity<>(ApiResponse.success(message), HttpStatus.CREATED);
-        }
-        catch(AuthException e){
-            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), e.getStatus());
-        }
-        catch(Exception e){
-            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        String message = authService.saveUser(signUpRequest);
+        return new ResponseEntity<>(ApiResponse.success(message), HttpStatus.CREATED);
     }
 
     /**
@@ -54,22 +50,8 @@ public class AuthController {
      */
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<?>> login(@RequestBody AuthRequest authRequest, HttpServletResponse response) {
-        try {
-            LoginResponse loginResponse = authService.login(authRequest, response);
-            return new ResponseEntity<>(ApiResponse.success(loginResponse), HttpStatus.OK);
-        } catch (Exception e) {
-            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    @GetMapping("/validate")
-    public ResponseEntity<ApiResponse<String>> validateToken(@RequestParam("token") String token) {
-        try {
-            authService.validateToken(token);
-            return new ResponseEntity<>(ApiResponse.success("Token is valid"), HttpStatus.OK);
-        }catch(Exception e){
-            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        LoginResponse loginResponse = authService.login(authRequest, response);
+        return new ResponseEntity<>(ApiResponse.success(loginResponse), HttpStatus.OK);
     }
 
     /**
@@ -79,15 +61,16 @@ public class AuthController {
      */
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<?>> getCurrentUser(@AuthenticationPrincipal CustomUserDetails currentUser) {
-        try {
-            // get current user
-            CurrentUserDto currentUserDto = authService.getCurrentUser(currentUser.getId());
-            return new ResponseEntity<>(ApiResponse.success(currentUserDto), HttpStatus.OK);
-        } catch (Exception e) {
-            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        // get current user
+        CurrentUserDto currentUserDto = authService.getCurrentUser(currentUser.getId());
+        return new ResponseEntity<>(ApiResponse.success(currentUserDto), HttpStatus.OK);
     }
 
+    /**
+     * Logout user and clear the token cookie
+     * @param response
+     * @return
+     */
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<String>> logout(HttpServletResponse response) {
         // Xoá cookie

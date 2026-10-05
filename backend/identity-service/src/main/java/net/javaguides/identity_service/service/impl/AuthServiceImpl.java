@@ -14,6 +14,8 @@ import net.javaguides.identity_service.entity.Role;
 import net.javaguides.identity_service.entity.UserCredential;
 import net.javaguides.identity_service.enums.ERole;
 import net.javaguides.identity_service.exception.AuthException;
+import net.javaguides.identity_service.exception.ResourceExistException;
+import net.javaguides.identity_service.exception.ResourceNotFoundException;
 import net.javaguides.identity_service.repository.RoleRepository;
 import net.javaguides.identity_service.repository.UserCredentialRepository;
 import net.javaguides.identity_service.service.AuthService;
@@ -22,7 +24,6 @@ import net.javaguides.identity_service.service.UserCacheService;
 import net.javaguides.identity_service.service.UserService;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -30,6 +31,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.HashSet;
@@ -49,37 +51,42 @@ public class AuthServiceImpl implements AuthService {
     private final UserCacheService userCacheService;
 
     @Override
+    @Transactional
     public String saveUser(SignUpRequest signUpRequest) {
-        try {
-            boolean existingUsername = checkExistingUsername(signUpRequest.getName());
-            if(existingUsername){
-                throw new AuthException("Username already exists in the database!", HttpStatus.BAD_REQUEST);
-            }
-            UserCredential userCredential = new UserCredential();
-            userCredential.setName(signUpRequest.getName());
-            userCredential.setEmail(signUpRequest.getEmail());
-            if (StringUtils.isEmpty(signUpRequest.getPassword())) {
-                signUpRequest.setPassword("123456");
-            }
-            userCredential.setPassword(passwordEncoder.encode(signUpRequest.getPassword()));
-            Set<Role> roles = new HashSet<>();
-
-            if (signUpRequest.getRoleId() == null) {
-                Role role = roleRepository.findByName(ERole.CUSTOMER)
-                        .orElseThrow(() -> new RuntimeException("Role not found"));
-                roles.add(role);
-            } else {
-                Role role = roleRepository.findById(Long.valueOf(signUpRequest.getRoleId()))
-                        .orElseThrow(() -> new RuntimeException("Role not found"));
-                roles.add(role);
-            }
-
-            userCredential.setRoles(roles);
-            userCredentialRepository.save(userCredential);
-            return "User added to the system!";
-        }catch(Exception e){
-            throw new RuntimeException("Error registering user: " + e.getMessage());
+        boolean existingUsername = checkExistingUsername(signUpRequest.getName());
+        if (existingUsername) {
+            throw new ResourceExistException("Username already exists in the DB!");
         }
+        UserCredential userCredential = new UserCredential();
+        userCredential.setName(signUpRequest.getName());
+        userCredential.setEmail(signUpRequest.getEmail());
+        // TODO: hard code temporary
+        if (StringUtils.isEmpty(signUpRequest.getPassword())) {
+            signUpRequest.setPassword("123456");
+        }
+        userCredential.setPassword(passwordEncoder.encode(signUpRequest.getPassword()));
+        Set<Role> roles = new HashSet<>();
+
+        // get role
+        roles.add(getRole(signUpRequest.getRoleId()));
+
+        userCredential.setRoles(roles);
+        userCredentialRepository.save(userCredential);
+        return "User added to the system!";
+    }
+
+    /**
+     * Get role by roleId. If roleId is null, return default role CUSTOMER.
+     * @param roleId
+     * @return
+     */
+    private Role getRole(Integer roleId) {
+        if (roleId == null) {
+            return roleRepository.findByName(ERole.CUSTOMER)
+                    .orElseThrow(() -> new ResourceNotFoundException("Role not found"));
+        }
+        return roleRepository.findById(Long.valueOf(roleId))
+                .orElseThrow(() -> new ResourceNotFoundException("Role not found"));
     }
 
     @Override
@@ -87,14 +94,12 @@ public class AuthServiceImpl implements AuthService {
         Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(authRequest.getUsername(), authRequest.getPassword()));
 
         Optional<UserCredential> optionalUser = userCredentialRepository.findByNameAndDelFlgFalse(authRequest.getUsername());
-        if(!optionalUser.isPresent()){
-            throw new AuthException("Invalid credentials! Please try again!",HttpStatus.UNAUTHORIZED);
+        if(optionalUser.isEmpty()){
+            throw new AuthException("Invalid credentials! Please try again!");
         }
 
         UserCredential userCredential = optionalUser.get();
         SecurityContextHolder.getContext().setAuthentication(authentication);
-
-
 
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         String jwtToken = jwtService.generateToken(authentication);
@@ -107,10 +112,6 @@ public class AuthServiceImpl implements AuthService {
         return jwtToken;
     }
 
-    @Override
-    public void validateToken(String token) {
-        jwtService.validateToken(token);
-    }
 
     /**
      * Get user information from cache or database if not found in cache.
@@ -120,7 +121,6 @@ public class AuthServiceImpl implements AuthService {
      */
     @Override
     public CurrentUserDto getCurrentUser(Long userId) {
-
         // get user from cache
         UserCache currentUserCache = userCacheService.getCachedUser(userId);
 

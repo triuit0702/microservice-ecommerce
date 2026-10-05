@@ -25,7 +25,7 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
 
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
-                         AuthenticationException authException) throws IOException {
+                         AuthenticationException authenticationException) throws IOException {
        // ApiResponse<String> apiResponse = new ApiResponse<>("Unauthorized access");
        // apiResponse.setTimestamp(LocalDateTime.now());
 

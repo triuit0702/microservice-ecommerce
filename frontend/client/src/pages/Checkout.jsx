@@ -152,7 +152,7 @@ export default function Checkout() {
                                 control={control}
                                 label="Email"
                                 rules={{ required: "Email là bắt buộc" }}
-                            />}
+                            />
                         </Paper>
 
                         {/* Cart Items */}

@@ -10,6 +10,10 @@ export const getErrorMessage = (error) => {
         return data.message
     }
 
+    if (data?.error?.message) {
+        return data.error.message;
+    }
+
     switch (status) {
         case 400:
             return 'Dữ liệu không hợp lệ'

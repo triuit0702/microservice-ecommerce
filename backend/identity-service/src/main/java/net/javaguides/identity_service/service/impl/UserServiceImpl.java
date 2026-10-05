@@ -15,8 +15,6 @@ import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.repository.query.Param;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
@@ -31,17 +29,10 @@ public class UserServiceImpl implements UserService {
     private final ModelMapper modelMapper;
 
 
-//    public UserServiceImpl(UserCredentialRepository userCredentialRepository, RoleRepository roleRepository, ModelMapper modelMapper) {
-//        this.userCredentialRepository = userCredentialRepository;
-//        this.roleRepository = roleRepository;
-//        this.modelMapper = modelMapper;
-//    }
-
     @Override
     public UserDto getUserByUsername(String username) {
         UserCredential userCredential = userCredentialRepository.findByNameAndDelFlgFalse(username).orElse(null);
         if(userCredential != null){
-            System.out.println("UserCredential: " + userCredential);
             return modelMapper.map(userCredential, UserDto.class);
         }
         return null;
@@ -71,7 +62,7 @@ public class UserServiceImpl implements UserService {
     public void deleteUser(Long userId) {
         Optional<UserCredential> optUser = userCredentialRepository.findById(userId);
         if (optUser.isEmpty()) {
-            throw new ResourceNotFoundException("User not found with userId: "+ userId, HttpStatus.NOT_FOUND);
+            throw new ResourceNotFoundException("User not found with userId: "+ userId);
         }
         UserCredential user = optUser.get();
         user.setDelFlg(true);
@@ -83,7 +74,7 @@ public class UserServiceImpl implements UserService {
     public void upateUser(SignUpRequest signUpRequest) {
         // check user exist
         UserCredential user = userCredentialRepository.findById(signUpRequest.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with userId: " + signUpRequest.getId(), HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with userId: " + signUpRequest.getId()));
 
         // map dto  to entity except  password
         user.setName(signUpRequest.getName());
@@ -92,18 +83,17 @@ public class UserServiceImpl implements UserService {
         // update role
         Set<Role> roles = new HashSet<>();
 
+        Role role;
         if (signUpRequest.getRoleId() == null) {
-            Role role = roleRepository.findByName(ERole.CUSTOMER)
+            role = roleRepository.findByName(ERole.CUSTOMER)
                     .orElseThrow(() -> new RuntimeException("Role not found"));
-            roles.add(role);
         } else {
-            Role role = roleRepository.findById(Long.valueOf(signUpRequest.getRoleId()))
+            role = roleRepository.findById(Long.valueOf(signUpRequest.getRoleId()))
                     .orElseThrow(() -> new RuntimeException("Role not found"));
-            roles.add(role);
         }
+        roles.add(role);
         user.setRoles(roles);
         userCredentialRepository.save(user);
-
     }
 
     @Override
@@ -118,7 +108,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public void updateLastLoginDate(Long userId) {
         UserCredential user = userCredentialRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with userId: " + userId, HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with userId: " + userId));
 
 
         user.setLastLoginAt(LocalDateTime.now());

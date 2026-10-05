@@ -42,7 +42,9 @@ axiosClient.interceptors.response.use(
             }    // ✅ 400: validation / business error -> KHÔNG redirect
             else if (status === 400) {
                 // Để component tự xử lý
-                return Promise.reject(error);
+                const message = getErrorMessage(error);
+                showToastGlobal?.(message, "danger");
+                //return Promise.reject(error);
             }
 
             // ✅ 500 trở lên: server error -> toast
