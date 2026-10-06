@@ -57,18 +57,17 @@ public class RoleBasedAccessFilter extends AbstractGatewayFilterFactory<RoleBase
                 List<String> permissions = jwtUtil.extractPermissions(token);
                 // Kiểm tra vai trò của người dùng
                 boolean hasRole = roles.stream().anyMatch(config.getRequiredRoles()::contains);
-                // Kiểm tra vai trò của người dùng
+                // Kiểm tra quyền của người dùng
                 boolean hasPermission = permissions.stream().anyMatch(config.getRequiredPermissions()::contains);
-                if (!hasRole) {
-                    return onError(exchange, "Forbidden access", HttpStatus.FORBIDDEN);
+
+                // if config has required roles and user doesn't have any of them, return forbidden
+                if (!config.getRequiredRoles().isEmpty() && !hasRole) {
+                    return onError(exchange, "You don't have the required role to access this resource.", HttpStatus.FORBIDDEN);
                 }
 
-                if(config.getRequiredPermissions().size() == 0){
-                    return chain.filter(exchange);
-                }
-
-                if(!hasPermission){
-                    return onError(exchange, "You don't have permission to do this.", HttpStatus.UNAUTHORIZED);
+                // if config has required permissions and user doesn't have any of them, return unauthorized
+                if( !config.getRequiredPermissions().isEmpty() && !hasPermission) {
+                    return onError(exchange, "You don't have permission to do this.", HttpStatus.FORBIDDEN);
                 }
 
             } catch (Exception e) {
