@@ -17,15 +17,12 @@ import java.util.List;
 import java.util.Set;
 
 public interface ProductService {
-    ProductResponseDto saveProduct(CreateProductRequestDto createProductRequestDto);
     ProductResponseDto getProductById(String id);
     Page<ProductResponseDto> getProductList(int page, int size);
-    ProductResponseDto updateProduct(String id, UpdateProductRequestDto productUpdateDto, int version);
+    ProductResponseDto updateProduct(String id, UpdateProductRequestDto productUpdateDto, int version) throws Exception;
     void deleteProduct(String id);
     List<ProductResponseDto> getProductsByIds(Set<String> productIds);
     Page<ProductResponseDto> searchProducts(String name, String categoryId, BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable);
-    void createProduct(ProductRequest req,  MultipartFile image) throws IOException;
+    void createProduct(ProductRequest req,  MultipartFile image) throws Exception;
 
-    // get list product by list product id
-    List<Product> findAllByListProductId(List<String> ids);
 }

@@ -3,6 +3,7 @@ package net.javaguides.product_service.exception;
 import jakarta.persistence.OptimisticLockException;
 import lombok.extern.slf4j.Slf4j;
 import net.javaguides.common_lib.dto.ApiResponse;
+import net.javaguides.common_lib.exception.ResourceExistException;
 import org.apache.kafka.common.errors.ResourceNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -32,6 +33,21 @@ public class GlobalException {
         return new ResponseEntity<>(ApiResponse.error(ex.getMessage()), HttpStatus.NOT_FOUND);
     }
 
+    /**
+     * Handle ResourceExistException and return a 400 Bad Request response with the error message.
+     *
+     * @param e the ResourceExistException thrown
+     * @return a ResponseEntity containing the error message and a 400 status code
+     */
+    @ExceptionHandler(ResourceExistException.class)
+    public ResponseEntity<ApiResponse<String>> handleResourceExistException(
+            ResourceExistException e) {
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(e.getMessage()));
+    }
+
     @ExceptionHandler(BindException.class)
     public ResponseEntity<?> handleBindException(BindException ex) {
 
@@ -47,15 +63,6 @@ public class GlobalException {
 
          return ResponseEntity.badRequest()
                 .body(ApiResponse.error("Validation failed", errors));
-    }
-
-    @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<?> handleBusinessException(BusinessException ex) {
-
-        log.error("Business exception: {}", ex.getMessage(), ex);
-
-        return ResponseEntity.badRequest()
-                .body(ApiResponse.error(ex.getMessage()));
     }
 
     @ExceptionHandler(OptimisticLockException.class)
@@ -74,7 +81,7 @@ public class GlobalException {
         log.error("Product Exception : {}", ex.getMessage(), ex);
 
         return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error(ex.getMessage()));
     }
 

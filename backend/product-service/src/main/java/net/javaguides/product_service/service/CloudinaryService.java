@@ -5,6 +5,7 @@ import com.cloudinary.utils.StringUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javaguides.product_service.dto.UploadResponse;
+import net.javaguides.product_service.exception.ImageException;
 import org.imgscalr.Scalr;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +34,6 @@ public class CloudinaryService {
 
     private final Cloudinary cloudinary;
 
-    @Async
     public void uploadFile(MultipartFile file, String publicId) {
         try {
             // Đọc ảnh từ MultipartFile thành BufferedImage
@@ -58,10 +58,9 @@ public class CloudinaryService {
 
             log.info("Uploaded file URL: {}", url);
 
-        } catch (IOException e) {
-            log.error("IO Exception during file upload", e);
         } catch (Exception e) {
             log.error("Unexpected exception during file upload", e);
+            throw new ImageException("Failed upload image with publicId : " + publicId);
         }
     }
 
@@ -160,7 +159,7 @@ public class CloudinaryService {
                     publicId,
                     ObjectUtils.asMap("resource_type", "image")
             );
-        } catch (Exception e) {
+        } catch (IOException e) {
             log.error("Failed to delete image: {}", publicId, e);
         }
     }

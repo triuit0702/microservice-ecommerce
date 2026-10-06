@@ -1,11 +1,13 @@
 package net.javaguides.product_service.service.impl;
 
+import net.javaguides.common_lib.exception.ResourceNotFoundException;
 import net.javaguides.product_service.dto.category.CategoryResponseDto;
 import net.javaguides.product_service.dto.category.CreateCategoryRequestDto;
 import net.javaguides.product_service.entity.Category;
 import net.javaguides.product_service.entity.Product;
 import net.javaguides.product_service.repository.CategoryRepository;
 import net.javaguides.product_service.service.CategoryService;
+import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -24,9 +26,9 @@ public class CategoryServiceImpl implements CategoryService {
         category.setId(UUID.randomUUID().toString());
         category.setName(requestDto.getName());
 
-        if (requestDto.getParentId() != null) {
+        if (StringUtils.isNotBlank(requestDto.getParentId())) {
             Category parent = categoryRepository.findById(requestDto.getParentId())
-                    .orElseThrow(() -> new RuntimeException("Parent category not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Parent category not found"));
             category.setParent(parent);
         }
 
@@ -37,13 +39,13 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public CategoryResponseDto updateCategory(String id, CreateCategoryRequestDto requestDto) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
 
         category.setName(requestDto.getName());
 
         if (requestDto.getParentId() != null) {
             Category parent = categoryRepository.findById(requestDto.getParentId())
-                    .orElseThrow(() -> new RuntimeException("Parent category not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Parent category not found"));
             category.setParent(parent);
         } else {
             category.setParent(null);
@@ -56,14 +58,14 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public void deleteCategory(String id) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
         categoryRepository.delete(category);
     }
 
     @Override
     public CategoryResponseDto getCategoryById(String id) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
         return convertToDto(category);
     }
 
@@ -77,24 +79,17 @@ public class CategoryServiceImpl implements CategoryService {
                 .collect(Collectors.toList());
     }
 
-    @Override
-    public List<CategoryResponseDto> getRootCategories() {
-        List<Category> rootCategories = categoryRepository.findByParentIsNull();
-        return rootCategories.stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList());
-    }
 
     @Override
     public Category getById(String id) {
         return categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
     }
 
     @Override
     public Set<Category> getByCategoryIdList(List<String> idList) {
         if (CollectionUtils.isEmpty(idList)) {
-            throw new RuntimeException("category id list not exist");
+            throw new ResourceNotFoundException("category id list not exist");
         }
         return categoryRepository.findByIdIn(idList);
     }

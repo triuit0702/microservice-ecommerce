@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.javaguides.common_lib.dto.product.ProductDTO;
 import net.javaguides.common_lib.dto.product.ProductEvent;
 import net.javaguides.common_lib.dto.product.ProductMethod;
+import net.javaguides.common_lib.exception.ResourceNotFoundException;
 import net.javaguides.product_service.dto.*;
 import net.javaguides.product_service.dto.product.*;
 import net.javaguides.product_service.dto.product_variant.ProductVariantDto;
@@ -30,7 +31,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -62,37 +62,18 @@ public class ProductServiceImpl implements ProductService {
     @Value("${cloudinary.cloud-name}")
     private String cloudName;
 
+    /**
+     * Get file extension from MultipartFile
+     * @param file
+     * @return
+     */
     public String getFileExtension(MultipartFile file) {
         String originalFilename = file.getOriginalFilename();
         if (originalFilename != null && originalFilename.contains(".")) {
             return originalFilename.substring(originalFilename.lastIndexOf(".") + 1);
-        } else {
-            return "";
         }
-    }
-    @Override
-    @Transactional
-    public ProductResponseDto saveProduct(CreateProductRequestDto createProductRequestDto) {
-        try {
-            String publicId = System.currentTimeMillis() + "_" + createProductRequestDto.getMultipartFile().getOriginalFilename().replace(".jpg", "");
-            String preUrl = "https://res.cloudinary.com/" + cloudName + "/image/upload/" + publicId + "." + getFileExtension(createProductRequestDto.getMultipartFile());
+        return StringUtils.EMPTY;
 
-            // Map DTO sang Product entity
-            Product product = modelMapper.map(createProductRequestDto, Product.class);
-            product.setId(UUID.randomUUID().toString());
-            product.setImageUrl(preUrl);
-            Product savedProduct = productRepository.save(product);
-
-            // Lưu sản phẩm vào cache
-            //productDAO.save(savedProduct);
-
-            // Upload ảnh lên Cloudinary (nên thực hiện sau khi lưu sản phẩm thành công)
-            cloudinaryService.uploadFile(createProductRequestDto.getMultipartFile(), publicId);
-
-            return modelMapper.map(savedProduct, ProductResponseDto.class);
-        } catch (Exception e) {
-            throw new ProductException("Failed to create product: " + e.getMessage(), HttpStatus.BAD_REQUEST);
-        }
     }
 
 
@@ -103,10 +84,8 @@ public class ProductServiceImpl implements ProductService {
      */
     @Override
     public ProductResponseDto getProductById(String id) {
-        LOGGER.info("Cache miss for product id: {}", id);
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new ProductException("Product not found with id: " + id, HttpStatus.NOT_FOUND));
-
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
 
         ProductResponseDto productResponseDto = modelMapper.map(product, ProductResponseDto.class);
         List<String> categoryIds = product.getCategories().stream()
@@ -139,12 +118,12 @@ public class ProductServiceImpl implements ProductService {
      * @param version
      * @return
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     @Override
-    public ProductResponseDto updateProduct(String id, UpdateProductRequestDto productUpdateDto, int version) {
+    public ProductResponseDto updateProduct(String id, UpdateProductRequestDto productUpdateDto, int version) throws Exception {
         // find product by id
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new ProductException("Not found", HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new ResourceNotFoundException("Product Not found"));
         // execute update product
         Product updatedProduct = executeUpdate(productUpdateDto, product);
         return modelMapper.map(updatedProduct, ProductResponseDto.class);
@@ -179,7 +158,7 @@ public class ProductServiceImpl implements ProductService {
      * @param existingProduct
      * @return
      */
-    public Product executeUpdate(UpdateProductRequestDto productUpdateDto , Product existingProduct)  {
+    public Product executeUpdate(UpdateProductRequestDto productUpdateDto , Product existingProduct) throws Exception {
         UploadResponse uploadResponse = null;
         try {
             modelMapper.typeMap(UpdateProductRequestDto.class, Product.class)
@@ -203,13 +182,8 @@ public class ProductServiceImpl implements ProductService {
             deleteImageAfterCommit(oldMainImagePublicId);
         } catch (Exception  e) {
             log.error("Update product failed, productId={}", existingProduct.getId(), e);
-            rollbackImage(uploadResponse);
-
-            throw new ProductException(
-                    "Error processing product update",
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    e
-            );
+            rollbackImage(uploadResponse); // If fail, we use schedule job to clean later
+            throw e;
         }
         return existingProduct;
     }
@@ -250,16 +224,24 @@ public class ProductServiceImpl implements ProductService {
         return variants;
     }
 
+    /**
+     * Delete product by id
+     * @param id
+     */
     @Override
     public void deleteProduct(String id) {
         Product existingProduct = productRepository.findById(id)
-                .orElseThrow(() -> new ProductException("Product not found with ID: " + id, HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + id));
 
         existingProduct.setDelFlg(true);
         productRepository.save(existingProduct);
     }
 
-
+    /**
+     * Get products by ids
+     * @param productIds
+     * @return
+     */
     @Override
     public List<ProductResponseDto> getProductsByIds(Set<String> productIds) {
         return productRepository.findAllByIdIn(productIds)
@@ -290,12 +272,6 @@ public class ProductServiceImpl implements ProductService {
         return products.map(product -> modelMapper.map(product, ProductResponseDto.class));
     }
 
-
-
-    // Private Helper Methods
-    private Product mapToEntity(ProductDTO productDTO) {
-        return modelMapper.map(productDTO, Product.class);
-    }
 
     /**
      * Create ProductEvent from Product entity and stock quantity
@@ -335,7 +311,7 @@ public class ProductServiceImpl implements ProductService {
      * @throws IOException
      */
     @Transactional
-    public void createProduct(ProductRequest req,  MultipartFile image) throws IOException {
+    public void createProduct(ProductRequest req,  MultipartFile image) throws Exception {
         List<ProductVariantDto> variants = req.getVariants();
         UploadResponse uploadResponse = null;
         try {
@@ -354,13 +330,9 @@ public class ProductServiceImpl implements ProductService {
             }
         } catch (Exception e) {
             // 3. Rollback ảnh nếu DB fail
-           rollbackImage(uploadResponse);
+           rollbackImage(uploadResponse); // TODO: If rollback fail , use schedule job to run clean
             log.error("Create product failed", e);
-            throw new ProductException(
-                    "Error processing create product",
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    e
-            ); // cho transaction rollback DB
+            throw e;
         }
 
     }
@@ -394,11 +366,7 @@ public class ProductServiceImpl implements ProductService {
      */
     private void rollbackImage(UploadResponse uploadResponse) {
         if (uploadResponse != null && uploadResponse.getPublicId() != null) {
-            try {
-                cloudinaryService.deleteImage(uploadResponse.getPublicId());
-            } catch (Exception ex) {
-                log.error("Rollback image failed, publicId={}", uploadResponse.getPublicId(), ex);
-            }
+            cloudinaryService.deleteImage(uploadResponse.getPublicId());
         }
     }
 
@@ -476,7 +444,4 @@ public class ProductServiceImpl implements ProductService {
         return variant;
     }
 
-    public List<Product> findAllByListProductId(List<String> ids) {
-        return productRepository.findByIdIn(ids);
-    }
 }

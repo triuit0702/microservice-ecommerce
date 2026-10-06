@@ -38,33 +38,38 @@ import java.util.Set;
 public class ProductController {
     private final ProductService productService;
 
+    /**
+     * Get a paginated list of products.
+     *
+     * @param page the page number (default is 0)
+     * @param size the page size (default is 10)
+     * @return a ResponseEntity containing the ApiResponse with the product list
+     */
     @GetMapping
     public ResponseEntity<ApiResponse<?>> getProductList(@RequestParam(defaultValue = "0") int page,
                                                             @RequestParam(defaultValue = "10") int size
     ) {
-        try {
-            Page<ProductResponseDto> productList = productService.getProductList(page, size);
-            return new ResponseEntity<>(ApiResponse.success(productList), HttpStatus.OK);
-        } catch (Exception e) {
-            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        Page<ProductResponseDto> productList = productService.getProductList(page, size);
+        return new ResponseEntity<>(ApiResponse.success(productList), HttpStatus.OK);
+
     }
 
+    /**
+     * Get a product by  ID.
+     *
+     * @param id the ID of the product
+     * @return a ResponseEntity containing the ApiResponse with the product details
+     */
     @GetMapping("{id}")
     public ResponseEntity<ApiResponse<?>> getProductById(@PathVariable("id") String id) {
-        try {
             ProductResponseDto productStockResponse = productService.getProductById(id);
             return new ResponseEntity<>(ApiResponse.success(productStockResponse), HttpStatus.OK);
-        } catch (ProductException e) {
-            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), e.getStatus());
-        } catch (Exception e) {
-            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<?>> updateProduct(@PathVariable("id") String id,
-                                                        @Valid @ModelAttribute UpdateProductRequestDto productDTO) {
+                                                        @Valid @ModelAttribute UpdateProductRequestDto productDTO) throws Exception {
         ProductResponseDto productStockResponse = productService.updateProduct(
                 id,
                 productDTO,
@@ -75,40 +80,29 @@ public class ProductController {
 
     @DeleteMapping("{id}")
     public ResponseEntity<ApiResponse<?>> deleteProduct(@PathVariable("id") String id) {
-        try {
-            productService.deleteProduct(id);
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-        }
-        catch (ProductException e) {
-            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), e.getStatus());
-        }
-        catch (Exception e) {
-            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        productService.deleteProduct(id);
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
-    @GetMapping("/search")
-    public ResponseEntity<ApiResponse<Page<ProductResponseDto>>> searchProducts(
-            @RequestParam(required = false) String name,
-            @RequestParam(required = false) String categoryId,
-            @RequestParam(required = false) BigDecimal minPrice,
-            @RequestParam(required = false) BigDecimal maxPrice,
-            Pageable pageable) {
-
-        Page<ProductResponseDto> products = productService.searchProducts(name, categoryId, minPrice, maxPrice, pageable);
-        return ResponseEntity.ok(ApiResponse.success(products));
-    }
+//    @GetMapping("/search")
+//    public ResponseEntity<ApiResponse<Page<ProductResponseDto>>> searchProducts(
+//            @RequestParam(required = false) String name,
+//            @RequestParam(required = false) String categoryId,
+//            @RequestParam(required = false) BigDecimal minPrice,
+//            @RequestParam(required = false) BigDecimal maxPrice,
+//            Pageable pageable) {
+//
+//        Page<ProductResponseDto> products = productService.searchProducts(name, categoryId, minPrice, maxPrice, pageable);
+//        return ResponseEntity.ok(ApiResponse.success(products));
+//    }
 
 
 
     @GetMapping("/by-ids")
     public ResponseEntity<ApiResponse<List<ProductResponseDto>>> getProductsByIds(@RequestParam("ids") Set<String> productIds) {
-        try {
-            List<ProductResponseDto> productDTOs = productService.getProductsByIds(productIds);
-            return new ResponseEntity<>(ApiResponse.success(productDTOs), HttpStatus.OK);
-        } catch (Exception e) {
-            return new ResponseEntity<>(ApiResponse.error(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        List<ProductResponseDto> productDTOs = productService.getProductsByIds(productIds);
+        return new ResponseEntity<>(ApiResponse.success(productDTOs), HttpStatus.OK);
+
     }
 
 

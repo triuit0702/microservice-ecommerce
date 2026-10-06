@@ -154,6 +154,7 @@ public class CartService {
 //        redisTemplate.delete(buildKey(userId));
 //    }
 
+    // TODO: 
     public int updateQuantity(AddCartRequestDto request) {
         // dùng lua script để update quantity trong giỏ hàng
         String key = buildKey(request.getUserId());
