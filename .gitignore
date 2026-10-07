@@ -41,7 +41,6 @@ build/
 
 /ecommerce-frontend-main/
 /backend/email-service
-/backend/order-service
 /backend/payment-service
 /backend/payment-service
 /backend/.idea
