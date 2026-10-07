@@ -34,7 +34,7 @@ public class ProductVariantServiceImpl implements ProductVariantService {
 
     @Transactional
     @Override
-    public ProductVariantResponseDto createProductVariant(String productId, Map<String, String> attributes, BigDecimal price, String sku, Integer initialStock, Integer reorderLevel) {
+    public ProductVariantResponseDto createProductVariant(String productId, BigDecimal price, String sku, Integer initialStock, Integer reorderLevel) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 

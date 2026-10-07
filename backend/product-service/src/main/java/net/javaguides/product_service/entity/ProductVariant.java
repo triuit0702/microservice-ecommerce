@@ -6,8 +6,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import java.math.BigDecimal;
-import java.util.HashSet;
-import java.util.Set;
 
 @Entity
 @Table(name = "product_variants")
@@ -46,7 +44,4 @@ public class ProductVariant {
 
     private String imagePublicId;
     private String imageUrl;
-
-    @OneToMany(mappedBy = "productVariant", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<AttributeValue> attributeValues = new HashSet<>();
 }

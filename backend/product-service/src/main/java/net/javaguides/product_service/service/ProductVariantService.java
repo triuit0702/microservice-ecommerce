@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.Set;
 
 public interface ProductVariantService {
-    ProductVariantResponseDto createProductVariant(String productId, Map<String, String> attributes, BigDecimal price, String sku, Integer initialStock, Integer reorderLevel);
+    ProductVariantResponseDto createProductVariant(String productId, BigDecimal price, String sku, Integer initialStock, Integer reorderLevel);
     List<ProductVariantResponseDto> getVariantsByProductId(String productId);
     ProductVariantResponseDto updateProductVariant(Long variantId, UpdateProductVariantRequestDto updateDTO);
     void deleteProductVariant(Long variantId);

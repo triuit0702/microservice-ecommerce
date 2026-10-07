@@ -33,7 +33,6 @@ public class ProductVariantController {
             @PathVariable String productId,
             @RequestBody CreateProductVariantRequestDto requestDto) {
         ProductVariantResponseDto variant = productVariantService.createProductVariant(productId,
-                requestDto.getAttributes(),
                 requestDto.getPrice(),
                 requestDto.getSku(),
                 requestDto.getInitialStock(),

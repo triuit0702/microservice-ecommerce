@@ -5,7 +5,7 @@ spring:
     active: dev
   kafka:
     producer:
-      bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+      bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9192}
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
     consumer:
@@ -21,22 +21,18 @@ spring:
       name: create_order_topic
     update-order-topic:
         name: update_order_topic
-  zipkin:
-    base-url: http://127.0.0.1:9411/
-  sleuth:
-    sampler:
-      probability: 1
+
   data:
     redis:
       host: ${SPRING_REDIS_HOST:localhost}
-      port: ${SPRING_REDIS_PORT:6379}
+      port: ${SPRING_REDIS_PORT:6319}
       timeout: ${SPRING_REDIS_TIMEOUT:60000}
   servlet:
     multipart:
       max-file-size: 2MB
       max-request-size: 15MB
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/product_db}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3307/product_db}
     username: ${SPRING_DATASOURCE_USERNAME:root}
     password: ${SPRING_DATASOURCE_PASSWORD:123456}
   jpa:
@@ -60,9 +56,6 @@ management:
     web:
       exposure:
         include: "*"
-  tracing:
-    sampling:
-      probability: 1
 
 cloudinary:
   cloud-name: shopdevtri
