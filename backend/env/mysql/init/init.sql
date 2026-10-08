@@ -92,9 +92,23 @@ VALUES
  FROM roles r
  JOIN permissions p
      ON p.name IN (
-         'PRODUCT_READ',
+         'PRODUCT_VIEW',
          'PRODUCT_CREATE',
          'PRODUCT_UPDATE',
          'PRODUCT_DELETE'
      )
  WHERE r.name = 'EMPLOYEE';
+
+
+ INSERT INTO user_credentials
+ (del_flg, email, last_login_at, name, password)
+ VALUES( 0, 'admin123@gmail.com', NULL, 'admin', '$2a$10$1R/n7wAqPPXx6nzPlqVGh.sHrQgCw.8KAgRyGlGBv5h2jYZ3wL0ou');
+
+ INSERT INTO user_roles (user_id, role_id)
+ SELECT
+     u.id,
+     r.id
+ FROM user_credentials u
+ JOIN roles r
+     ON r.name = 'ADMINISTRATOR'
+ WHERE u.email = 'admin123@gmail.com';
