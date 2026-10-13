@@ -42,6 +42,10 @@ For each service, select the appropriate Run Configuration and click **Run**.
 
 Wait until the service has started successfully before running the next service.
 
+Check all service run successfully at:  http://localhost:8761/
+
+![alt text](image.png)
+
 
 ### Frontend
 

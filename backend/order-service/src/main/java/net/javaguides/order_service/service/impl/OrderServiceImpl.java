@@ -45,9 +45,9 @@ public class OrderServiceImpl implements OrderService {
     public OrderDTO placeOrder(OrderRequestDto orderRequestDto, Long userId, String email) {
         try {
             OrderDTO newOrder = createOrderDTO(orderRequestDto, userId);
-            validateStockAndPrice(orderRequestDto, newOrder);
+            validateStockAndPrice(orderRequestDto.getOrderItems());
 
-            Order createdOrder = saveOrder(newOrder, orderRequestDto);
+            Order createdOrder = saveOrder(newOrder);
 
             sendOrderEvent(createdOrder, orderRequestDto.getPaymentMethod(), email);
 
@@ -94,8 +94,8 @@ public class OrderServiceImpl implements OrderService {
     }
 
 
-    private void validateStockAndPrice(OrderRequestDto orderRequestDTO, OrderDTO newOrder) {
-        Set<String> productIds = extractProductIds(orderRequestDTO.getOrderItems());
+    private void validateStockAndPrice(List<OrderItemDTO> orderItems) {
+        Set<String> productIds = extractProductIds(orderItems);
         List<ProductResponseDto> products = fetchProducts(productIds);
 
         if (products.size() != productIds.size()) {
@@ -105,7 +105,7 @@ public class OrderServiceImpl implements OrderService {
         Map<String, ProductResponseDto> productsMap = products.stream()
                 .collect(Collectors.toMap(ProductResponseDto::getId, Function.identity()));
 
-        for (OrderItemDTO orderItem : orderRequestDTO.getOrderItems()) {
+        for (OrderItemDTO orderItem : orderItems) {
             ProductResponseDto product = productsMap.get(orderItem.getProductId());
             if (product == null) {
                 throw new OrderException("Not found product!", HttpStatus.NOT_FOUND);
@@ -157,7 +157,7 @@ public class OrderServiceImpl implements OrderService {
                 .orElse(null);
     }
 
-    private Order saveOrder(OrderDTO newOrder, OrderRequestDto orderRequestDto) {
+    private Order saveOrder(OrderDTO newOrder) {
         Order order = modelMapper.map(newOrder, Order.class);
         order.setOrderId(UUID.randomUUID().toString());
         order.setStatus(OrderStatus.PENDING.getLabel());
