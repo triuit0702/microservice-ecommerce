@@ -25,8 +25,9 @@ TODO: Cấu trúc thư mục và vai trò từng module
 
 ### Backend
 
-cd /env
-docker-compose -f docker-compose.yml up -d
+cd backend/env  
+``
+docker-compose -f docker-compose.yml up -d  ``
 
 
 Start each microservice manually from IntelliJ IDEA in the following:
@@ -44,18 +45,29 @@ Wait until the service has started successfully before running the next service.
 
 ### Frontend
 
-1.  admin 
-Open a terminal :
+#### admin  
+Open a terminal and navigate to the admin directory:
 
-cd /frontend/admin
-npm install
+``
+cd /frontend/admin  
+``
+
+If this is your first time running the application: ``npm install``  
+``
 npm start
+``  
+Open browser and go to: http://localhost:3000  
+You can login with account:  
+- Username: admin
+- Password: 123456
 
-2.  client
-Open another termina
+#### client    
+Open another terminal and navigate to the client directory:  
+``
+cd /frontend/client``  
+If this is your first time running the application: ``npm install``  
+``
+npm run dev``  
 
-cd /frontend/client
-npm install
-npm run dev
-
-## API Documentation
+##  TODO
+- The client page doesn't have a login feature yet, so for now , use the admin page to create users for clients.

@@ -2,7 +2,7 @@
 
 ## Introduction 🌟
 
-Welcome to the **E-commerce Backend Microservices Project**! This project utilizes a microservices architecture to provide a flexible and maintainable e-commerce platform. By using Docker and Docker Compose, developers can easily set up and manage the entire backend ecosystem, including services such as API Gateway, Service Registry (Eureka Server), Product, Order, Email, Identity, and Payment. Modern technologies like Kafka for messaging, OpenFeign for inter-service communication, Redis for temporary data storage, Zipkin for tracing, and MySQL for data storage create a powerful and efficient system.
+This project is a backend system for an e-commerce platform, built using a microservices architecture. 
 
 ## Microservices Architecture 🛠️
 
