@@ -60,6 +60,7 @@ public class OrderConsumer {
      * @param orderDTO   The order data transfer object containing order items.
      * @param variantMap A map of variant IDs to ProductVariant objects for easy access.
      */
+    @Transactional
     private void updateStock(OrderDTO orderDTO, Map<Long, ProductVariant> variantMap) {
 
         List<ProductVariant> productVariantList = new ArrayList<>();

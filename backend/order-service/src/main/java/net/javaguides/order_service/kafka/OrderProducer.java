@@ -29,7 +29,20 @@ public class OrderProducer {
         Message<OrderEvent> message = MessageBuilder.withPayload(orderEvent)
                 .setHeader(KafkaHeaders.TOPIC, topic.name())
                 .build();
-        kafkaTemplate.send(message);
+        //kafkaTemplate.send(message);
+
+        kafkaTemplate.send("create_order_topic", orderEvent)
+                .whenComplete((result, ex) -> {
+                    if (ex != null) {
+                        LOGGER.error("Send Kafka failed", ex);
+                    } else {
+                        var metadata = result.getRecordMetadata();
+                        LOGGER.info("Send Kafka success: topic={}, partition={}, offset={}",
+                                metadata.topic(),
+                                metadata.partition(),
+                                metadata.offset());
+                    }
+                });
         System.out.print("run kafka tset");
     }
 }
