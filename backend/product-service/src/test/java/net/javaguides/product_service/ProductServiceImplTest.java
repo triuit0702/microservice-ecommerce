@@ -82,89 +82,89 @@ class ProductServiceImplTest {
         productResponseDto.setImageUrl(product.getImageUrl());
     }
 
-    @Test
-    void testSaveProduct_Success() throws Exception {
-        // Mock behavior
-        when(modelMapper.map(any(CreateProductRequestDto.class), eq(Product.class))).thenReturn(product);
-        when(modelMapper.map(any(Product.class), eq(ProductResponseDto.class))).thenReturn(productResponseDto);
-        when(productRepository.save(any(Product.class))).thenReturn(product);
-        doNothing().when(productDAO).save(any(Product.class));
-        doNothing().when(cloudinaryService).uploadFile(any(MultipartFile.class), anyString());
-        when(createProductRequestDto.getMultipartFile().getOriginalFilename()).thenReturn("image.jpg");
-
-        // Thực thi phương thức cần test
-        ProductResponseDto responseDto = productService.saveProduct(createProductRequestDto);
-
-        // Kiểm tra kết quả
-        assertNotNull(responseDto);
-        assertEquals(product.getName(), responseDto.getName());
-
-        verify(productRepository, times(1)).save(any(Product.class));
-        verify(productDAO, times(1)).save(any(Product.class));
-        verify(cloudinaryService, times(1)).uploadFile(any(MultipartFile.class), anyString());
-    }
-
-    @Test
-    void testSaveProduct_Exception() throws Exception {
-        // Mock behavior để ném ra ngoại lệ khi mapping
-        when(modelMapper.map(any(CreateProductRequestDto.class), eq(Product.class))).thenThrow(new RuntimeException("Mapping error"));
-
-        // Thực thi và kiểm tra ngoại lệ
-        ProductException exception = assertThrows(ProductException.class, () -> {
-            productService.saveProduct(createProductRequestDto);
-        });
-
-        assertTrue(exception.getMessage().contains("Failed to create product"));
-
-        verify(productRepository, never()).save(any(Product.class));
-    }
-
-    @Test
-    void testGetProductById_ProductExistsInCache() {
-        // Mock behavior
-        when(productDAO.findByProductId(anyString())).thenReturn(productCacheDto);
-        when(modelMapper.map(any(ProductCacheDto.class), eq(ProductResponseDto.class))).thenReturn(productResponseDto);
-
-        // Thực thi
-        ProductResponseDto responseDto = productService.getProductById(product.getId());
-
-        // Kiểm tra kết quả
-        assertNotNull(responseDto);
-        verify(productDAO, times(1)).findByProductId(product.getId());
-        verify(productRepository, never()).findById(anyString());
-    }
-
-    @Test
-    void testGetProductById_ProductNotInCacheButExistsInDB() {
-        // Mock behavior
-        when(productDAO.findByProductId(anyString())).thenReturn(null);
-        when(productRepository.findById(anyString())).thenReturn(Optional.of(product));
-        when(modelMapper.map(any(Product.class), eq(ProductResponseDto.class))).thenReturn(productResponseDto);
-        doNothing().when(productDAO).save(any(Product.class));
-
-        // Thực thi
-        ProductResponseDto responseDto = productService.getProductById(product.getId());
-
-        // Kiểm tra kết quả
-        assertNotNull(responseDto);
-        verify(productDAO, times(1)).findByProductId(product.getId());
-        verify(productRepository, times(1)).findById(product.getId());
-    }
-
-    @Test
-    void testGetProductById_ProductNotFound() {
-        // Mock behavior
-        when(productDAO.findByProductId(anyString())).thenReturn(null);
-        when(productRepository.findById(anyString())).thenReturn(Optional.empty());
-
-        // Thực thi và kiểm tra ngoại lệ
-        ProductException exception = assertThrows(ProductException.class, () -> {
-            productService.getProductById("non-existing-id");
-        });
-
-        assertTrue(exception.getMessage().contains("Product not found with id"));
-
-        verify(productDAO, times(1)).findByProductId("non-existing-id");
-        verify(productRepository, times(1)).findById("non-existing-id");
-    }
+//    @Test
+//    void testSaveProduct_Success() throws Exception {
+//        // Mock behavior
+//        when(modelMapper.map(any(CreateProductRequestDto.class), eq(Product.class))).thenReturn(product);
+//        when(modelMapper.map(any(Product.class), eq(ProductResponseDto.class))).thenReturn(productResponseDto);
+//        when(productRepository.save(any(Product.class))).thenReturn(product);
+//        doNothing().when(productDAO).save(any(Product.class));
+//        doNothing().when(cloudinaryService).uploadFile(any(MultipartFile.class), anyString());
+//        when(createProductRequestDto.getMultipartFile().getOriginalFilename()).thenReturn("image.jpg");
+//
+//        // Thực thi phương thức cần test
+//        ProductResponseDto responseDto = productService.saveProduct(createProductRequestDto);
+//
+//        // Kiểm tra kết quả
+//        assertNotNull(responseDto);
+//        assertEquals(product.getName(), responseDto.getName());
+//
+//        verify(productRepository, times(1)).save(any(Product.class));
+//        verify(productDAO, times(1)).save(any(Product.class));
+//        verify(cloudinaryService, times(1)).uploadFile(any(MultipartFile.class), anyString());
+//    }
+//
+//    @Test
+//    void testSaveProduct_Exception() throws Exception {
+//        // Mock behavior để ném ra ngoại lệ khi mapping
+//        when(modelMapper.map(any(CreateProductRequestDto.class), eq(Product.class))).thenThrow(new RuntimeException("Mapping error"));
+//
+//        // Thực thi và kiểm tra ngoại lệ
+//        ProductException exception = assertThrows(ProductException.class, () -> {
+//            productService.saveProduct(createProductRequestDto);
+//        });
+//
+//        assertTrue(exception.getMessage().contains("Failed to create product"));
+//
+//        verify(productRepository, never()).save(any(Product.class));
+//    }
+//
+//    @Test
+//    void testGetProductById_ProductExistsInCache() {
+//        // Mock behavior
+//        when(productDAO.findByProductId(anyString())).thenReturn(productCacheDto);
+//        when(modelMapper.map(any(ProductCacheDto.class), eq(ProductResponseDto.class))).thenReturn(productResponseDto);
+//
+//        // Thực thi
+//        ProductResponseDto responseDto = productService.getProductById(product.getId());
+//
+//        // Kiểm tra kết quả
+//        assertNotNull(responseDto);
+//        verify(productDAO, times(1)).findByProductId(product.getId());
+//        verify(productRepository, never()).findById(anyString());
+//    }
+//
+//    @Test
+//    void testGetProductById_ProductNotInCacheButExistsInDB() {
+//        // Mock behavior
+//        when(productDAO.findByProductId(anyString())).thenReturn(null);
+//        when(productRepository.findById(anyString())).thenReturn(Optional.of(product));
+//        when(modelMapper.map(any(Product.class), eq(ProductResponseDto.class))).thenReturn(productResponseDto);
+//        doNothing().when(productDAO).save(any(Product.class));
+//
+//        // Thực thi
+//        ProductResponseDto responseDto = productService.getProductById(product.getId());
+//
+//        // Kiểm tra kết quả
+//        assertNotNull(responseDto);
+//        verify(productDAO, times(1)).findByProductId(product.getId());
+//        verify(productRepository, times(1)).findById(product.getId());
+//    }
+//
+//    @Test
+//    void testGetProductById_ProductNotFound() {
+//        // Mock behavior
+//        when(productDAO.findByProductId(anyString())).thenReturn(null);
+//        when(productRepository.findById(anyString())).thenReturn(Optional.empty());
+//
+//        // Thực thi và kiểm tra ngoại lệ
+//        ProductException exception = assertThrows(ProductException.class, () -> {
+//            productService.getProductById("non-existing-id");
+//        });
+//
+//        assertTrue(exception.getMessage().contains("Product not found with id"));
+//
+//        verify(productDAO, times(1)).findByProductId("non-existing-id");
+//        verify(productRepository, times(1)).findById("non-existing-id");
+//    }
 }

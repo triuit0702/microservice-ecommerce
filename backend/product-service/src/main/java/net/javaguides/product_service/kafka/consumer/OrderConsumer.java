@@ -2,8 +2,8 @@ package net.javaguides.product_service.kafka.consumer;
 
 import lombok.RequiredArgsConstructor;
 import net.javaguides.common_lib.dto.order.OrderDTO;
-import net.javaguides.common_lib.dto.order.OrderEvent;
 import net.javaguides.common_lib.dto.order.OrderItemDTO;
+import net.javaguides.common_lib.dto.order.OrderMessageEvent;
 import net.javaguides.product_service.entity.ProductVariant;
 import net.javaguides.product_service.exception.InsufficientStockException;
 import net.javaguides.product_service.kafka.producer.InventoryProducer;
@@ -29,11 +29,11 @@ public class OrderConsumer {
 
     @KafkaListener(topics = "${spring.kafka.create-order-topic.name}", groupId = "${spring.kafka.consumer.group-id}")
     @Transactional
-    public void consume(OrderEvent orderEvent) {
+    public void consume(OrderMessageEvent orderEvent) {
         LOGGER.info("Received OrderEvent: {}", orderEvent);
 
-        OrderDTO orderDTO = orderEvent.getOrderDTO();
-        Set<Long> variantIds = orderDTO.getOrderItems().stream()
+        //OrderDTO orderDTO = orderEvent.getOrderDTO();
+        Set<Long> variantIds = orderEvent.getOrderItems().stream()
                 .map(OrderItemDTO::getVariantId)
                 .collect(Collectors.toSet());
 
@@ -51,20 +51,20 @@ public class OrderConsumer {
                 .collect(Collectors.toMap(ProductVariant::getId, variant -> variant));
 
         // update stock
-        updateStock(orderDTO, variantMap);
+        updateStock(orderEvent, variantMap);
     }
 
     /**
      * Update the stock quantity of product variants based on the order items.
      *
-     * @param orderDTO   The order data transfer object containing order items.
+     * @param orderEvent   The order data transfer object containing order items.
      * @param variantMap A map of variant IDs to ProductVariant objects for easy access.
      */
     @Transactional
-    private void updateStock(OrderDTO orderDTO, Map<Long, ProductVariant> variantMap) {
+    private void updateStock(OrderMessageEvent orderEvent, Map<Long, ProductVariant> variantMap) {
 
         List<ProductVariant> productVariantList = new ArrayList<>();
-        for (OrderItemDTO orderItem : orderDTO.getOrderItems()) {
+        for (OrderItemDTO orderItem : orderEvent.getOrderItems()) {
 
             Long variantId = orderItem.getVariantId();
             ProductVariant productVariant = variantMap.get(variantId);
@@ -80,7 +80,7 @@ public class OrderConsumer {
 
             if (updatedStock < 0) {
                 LOGGER.error("Insufficient stock for variant {}. Required: {}, Available: {}", variantId, requiredQuantity, currentStock);
-                sendOrderStatusUpdate(orderDTO,"CANCEL");
+                sendOrderStatusUpdate(orderEvent,"CANCEL");
                 throw new InsufficientStockException("Insufficient stock for variant " + variantId);
             }
 
@@ -91,19 +91,19 @@ public class OrderConsumer {
         productVariantService.saveAllListVariant(productVariantList);
 
         // push event to kafka for order status update
-        sendOrderStatusUpdate(orderDTO,"RESERVED");
+        sendOrderStatusUpdate(orderEvent,"RESERVED");
 
     }
 
     /**
      * Send an order status update to the Kafka topic.
      *
-     * @param orderDTO The order data transfer object containing order details.
+     * @param orderEvent The order event containing order details.
      * @param status   The new status of the order (e.g., "RESERVED", "CANCEL").
      */
-    private void sendOrderStatusUpdate(OrderDTO orderDTO, String status) {
-        OrderDTO updatedOrderDTO = new OrderDTO();
-        updatedOrderDTO.setOrderId(orderDTO.getOrderId());
+    private void sendOrderStatusUpdate(OrderMessageEvent orderEvent, String status) {
+        OrderMessageEvent updatedOrderDTO = new OrderMessageEvent();
+        updatedOrderDTO.setOrderId(orderEvent.getOrderId());
         updatedOrderDTO.setStatus(status);
 
         inventoryProducer.sendOrderStatusUpdate(updatedOrderDTO);

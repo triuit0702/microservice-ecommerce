@@ -4,8 +4,8 @@ package net.javaguides.order_service.service.impl;
 import lombok.RequiredArgsConstructor;
 import net.javaguides.common_lib.dto.ApiResponse;
 import net.javaguides.common_lib.dto.order.OrderDTO;
-import net.javaguides.common_lib.dto.order.OrderEvent;
 import net.javaguides.common_lib.dto.order.OrderItemDTO;
+import net.javaguides.common_lib.dto.order.OrderMessageEvent;
 import net.javaguides.order_service.dto.OrderRequestDto;
 import net.javaguides.order_service.dto.product.ProductResponseDto;
 import net.javaguides.order_service.dto.product_variant.ProductVariantResponseDto;
@@ -13,6 +13,7 @@ import net.javaguides.order_service.entity.Order;
 import net.javaguides.order_service.entity.OrderStatus;
 import net.javaguides.order_service.exception.OrderException;
 import net.javaguides.order_service.kafka.OrderProducer;
+import net.javaguides.order_service.kafka.OutboxWriter;
 import net.javaguides.order_service.repository.OrderRepository;
 import net.javaguides.order_service.service.OrderService;
 import net.javaguides.order_service.service.ProductAPIClient;
@@ -40,7 +41,35 @@ public class OrderServiceImpl implements OrderService {
     private final ModelMapper modelMapper;
     private final ProductAPIClient productAPIClient;
 
-    @Override
+    private final OutboxWriter outboxWriter;
+
+//    @Override
+//    @Transactional
+//    public OrderDTO placeOrder(OrderRequestDto orderRequestDto, Long userId, String email) {
+//        try {
+//            OrderDTO newOrder = createOrderDTO(orderRequestDto, userId);
+//            validateStockAndPrice(orderRequestDto.getOrderItems());
+//
+//            Order createdOrder = saveOrder(newOrder);
+//            sendOrderEvent(createdOrder, orderRequestDto.getPaymentMethod(), email);
+//
+//            return modelMapper.map(createdOrder, OrderDTO.class);
+//        } catch (OrderException e) {
+//            throw e;
+//        } catch (Exception e) {
+//            LOGGER.error("Failed to create order: {}", e.getMessage(), e);
+//            throw new OrderException("Failed to create order ", HttpStatus.INTERNAL_SERVER_ERROR);
+//        }
+//    }
+
+    /**
+     * place order version 2: using outbox pattern to send event after transaction commit
+     *
+     * @param orderRequestDto The order request DTO containing order details.
+     * @param userId          The ID of the user placing the order.
+     * @param email           The email of the user placing the order.
+     * @return The created OrderDTO.
+     */
     @Transactional
     public OrderDTO placeOrder(OrderRequestDto orderRequestDto, Long userId, String email) {
         try {
@@ -48,16 +77,35 @@ public class OrderServiceImpl implements OrderService {
             validateStockAndPrice(orderRequestDto.getOrderItems());
 
             Order createdOrder = saveOrder(newOrder);
+           // sendOrderEvent(createdOrder, orderRequestDto.getPaymentMethod(), email);
+            OrderMessageEvent orderMessageEvent = createOrderMessageEvent(createdOrder, orderRequestDto.getPaymentMethod(), email);
 
-            sendOrderEvent(createdOrder, orderRequestDto.getPaymentMethod(), email);
+            // ghi event vào outbox, cùng transaction với đơn hàng
+            outboxWriter.save("create_order_topic", createdOrder.getOrderId(), orderMessageEvent);
 
             return modelMapper.map(createdOrder, OrderDTO.class);
         } catch (OrderException e) {
             throw e;
         } catch (Exception e) {
             LOGGER.error("Failed to create order: {}", e.getMessage(), e);
-            throw new OrderException("Failed to create order: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            throw new OrderException("Failed to create order ", HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    private OrderMessageEvent createOrderMessageEvent(Order createdOrder, String paymentMethod, String email) {
+        OrderMessageEvent orderMessageEvent = new OrderMessageEvent();
+        orderMessageEvent.setOrderId(createdOrder.getOrderId());
+        orderMessageEvent.setStatus(net.javaguides.common_lib.enums.OrderStatus.PENDING.getDeclaringClass().getName());
+        orderMessageEvent.setPaymentMethod(paymentMethod);
+        orderMessageEvent.setEmail(email);
+        orderMessageEvent.setUserId(createdOrder.getUserId());
+
+        List<OrderItemDTO> orderItems = createdOrder.getOrderItems().stream()
+                .map(item -> modelMapper.map(item, OrderItemDTO.class))
+                .collect(Collectors.toList());
+        orderMessageEvent.setOrderItems(orderItems);
+
+        return orderMessageEvent;
     }
 
     /**
@@ -75,17 +123,6 @@ public class OrderServiceImpl implements OrderService {
         orderRepository.save(order);
     }
 
-
-    private OrderEvent createOrderEvent(Order createdOrder, String paymentMethod, String email) {
-        OrderDTO createdOrderDto = modelMapper.map(createdOrder, OrderDTO.class);
-        OrderEvent orderEvent = new OrderEvent();
-        orderEvent.setOrderDTO(createdOrderDto);
-        orderEvent.setStatus("PENDING");
-        orderEvent.setMessage("Order status is in pending state");
-        orderEvent.setPaymentMethod(paymentMethod);
-        orderEvent.setEmail(email);
-        return orderEvent;
-    }
 
     private OrderDTO createOrderDTO(OrderRequestDto orderRequestDto, Long userId) {
         OrderDTO newOrder = modelMapper.map(orderRequestDto, OrderDTO.class);
@@ -168,10 +205,10 @@ public class OrderServiceImpl implements OrderService {
         return orderRepository.save(order);
     }
 
-    private void sendOrderEvent(Order createdOrder, String paymentMethod, String email) {
-        OrderEvent orderEvent = createOrderEvent(createdOrder, paymentMethod, email);
-        orderProducer.sendMessage(orderEvent);
-    }
+//    private void sendOrderEvent(Order createdOrder, String paymentMethod, String email) {
+//        OrderEvent orderEvent = createOrderEvent(createdOrder, paymentMethod, email);
+//        orderProducer.sendMessage(orderEvent);
+//    }
 
 
 }
