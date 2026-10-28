@@ -91,6 +91,7 @@ export default function UserManagement() {
     }, [page])
 
     function openAdd() {
+        setUserDetail(null)
         setVisibleModal(true);
         setEditingUser(false);
     }
@@ -136,8 +137,7 @@ export default function UserManagement() {
     //  Edit button
     function EditButton({ item }) {
         let permissions = userLogin.permissions;
-        console.log("permission: ");
-        console.log(permissions)
+
         // let canSelfEdit = permissions && permissions.includes("SELF_USER_EDIT") && item.id == userLogin.id
         if (permissions && permissions.includes("USER_UPDATE")) {
             return <CButton size="sm"

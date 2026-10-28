@@ -1,5 +1,5 @@
 import axiosClient from './AxiosClient'
-const API_URL = '/api/v1/user'
+const API_URL = '/api/v1/user/admin'
 
 
 

@@ -1,6 +1,5 @@
 
-import { Modal } from '@coreui/coreui'
-import { CButton, CFormInput, CFormLabel, CFormSelect, CInputGroup, CInputGroupText, CModal, CModalBody, CModalFooter, CModalHeader } from '@coreui/react'
+import { CButton, CFormInput, CFormLabel, CFormSelect, CModal, CModalBody, CModalFooter, CModalHeader } from '@coreui/react'
 import { useEffect, useState } from 'react'
 
 export default function ModalUser({
@@ -11,19 +10,18 @@ export default function ModalUser({
     saveUser
 }) {
 
-    const [formData, setFormData] = useState({
+    const initFormData = {
         id: null,
         name: "",
         email: "",
         roleId: ""
-    })
+    }
+    const [formData, setFormData] = useState(initFormData)
 
 
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value })
-        // let copyForm = { ...formData}
-        // copyForm[]
     }
 
     const onClose = () => {
@@ -38,8 +36,10 @@ export default function ModalUser({
     }
 
     useEffect(() => {
+        if (!visible) return;
         if (userDetail) setFormData(userDetail)
-    }, [userDetail])
+        else setFormData(initFormData)
+    }, [visible, userDetail])
 
     return (
 
