@@ -1,0 +1,3 @@
+# Copy to application-local.properties (gitignored) and fill in your values.
+# Alternatively set env var GOOGLE_CLIENT_SECRET.
+google.oauth2.client-secret=

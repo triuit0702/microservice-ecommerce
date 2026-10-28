@@ -14,6 +14,8 @@ import java.util.Optional;
 
 public interface UserCredentialRepository extends JpaRepository<UserCredential, Long> {
     Optional<UserCredential> findByNameAndDelFlgFalse(String username);
+    Optional<UserCredential> findFirstByEmailAndDelFlgFalse(String email);
+    boolean existsByName(String name);
     Page<UserCredential> findByDelFlgFalse(Pageable pageable);
 
     // count total user active

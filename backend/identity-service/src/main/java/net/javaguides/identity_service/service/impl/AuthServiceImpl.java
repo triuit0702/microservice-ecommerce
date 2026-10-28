@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import net.javaguides.identity_service.config.CustomUserDetails;
 import net.javaguides.identity_service.dto.AuthRequest;
 import net.javaguides.identity_service.dto.CurrentUserDto;
+import net.javaguides.identity_service.dto.GoogleLoginRequest;
 import net.javaguides.identity_service.dto.LoginResponse;
 import net.javaguides.identity_service.dto.SignUpRequest;
 import net.javaguides.identity_service.dto.cache.UserCache;
@@ -19,6 +20,7 @@ import net.javaguides.identity_service.exception.ResourceNotFoundException;
 import net.javaguides.identity_service.repository.RoleRepository;
 import net.javaguides.identity_service.repository.UserCredentialRepository;
 import net.javaguides.identity_service.service.AuthService;
+import net.javaguides.identity_service.service.GoogleOAuth2Service;
 import net.javaguides.identity_service.service.JwtService;
 import net.javaguides.identity_service.service.UserCacheService;
 import net.javaguides.identity_service.service.UserService;
@@ -30,6 +32,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +40,8 @@ import java.time.Duration;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 @Service
@@ -49,6 +54,7 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final UserService userService;
     private final UserCacheService userCacheService;
+    private final GoogleOAuth2Service googleOAuth2Service;
 
     @Override
     @Transactional
@@ -169,6 +175,68 @@ public class AuthServiceImpl implements AuthService {
         String token = generateToken(authRequest, response);
 
         // set cookie
+        addTokenCookie(response, token);
+
+        return completeLogin(currentUser);
+    }
+
+    /**
+     * Login with Google: exchange authorization code, find user by verified email
+     * (create a CUSTOMER account if not exists), then issue our JWT cookie like normal login.
+     * @param googleLoginRequest
+     * @param response
+     * @return
+     */
+    @Override
+    @Transactional
+    public LoginResponse loginWithGoogle(GoogleLoginRequest googleLoginRequest, HttpServletResponse response) {
+        if (googleLoginRequest == null || StringUtils.isEmpty(googleLoginRequest.getCode())) {
+            throw new AuthException("Google authorization code is required");
+        }
+
+        Jwt idToken = googleOAuth2Service.exchangeCodeForIdToken(googleLoginRequest.getCode());
+        String email = idToken.getClaimAsString("email");
+        if (StringUtils.isEmpty(email) || !Boolean.TRUE.equals(idToken.getClaimAsBoolean("email_verified"))) {
+            throw new AuthException("Google account email is not verified");
+        }
+
+        UserCredential user = userCredentialRepository.findFirstByEmailAndDelFlgFalse(email)
+                .orElseGet(() -> registerGoogleUser(email));
+
+        CustomUserDetails currentUser = CustomUserDetails.build(user);
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                currentUser, null, currentUser.getAuthorities());
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        addTokenCookie(response, jwtService.generateToken(authentication));
+
+        return completeLogin(currentUser);
+    }
+
+    /**
+     * Create a CUSTOMER account for a first-time Google user (random password, username from email).
+     */
+    private UserCredential registerGoogleUser(String email) {
+        UserCredential userCredential = new UserCredential();
+        userCredential.setName(generateUniqueUsername(email));
+        userCredential.setEmail(email);
+        userCredential.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
+        Set<Role> roles = new HashSet<>();
+        roles.add(getRole(null));
+        userCredential.setRoles(roles);
+        return userCredentialRepository.save(userCredential);
+    }
+
+    private String generateUniqueUsername(String email) {
+        String base = email.substring(0, email.indexOf('@'));
+        String username = base;
+        while (userCredentialRepository.existsByName(username)) {
+            username = base + "_" + ThreadLocalRandom.current().nextInt(1000, 10000);
+        }
+        return username;
+    }
+
+    private void addTokenCookie(HttpServletResponse response, String token) {
         ResponseCookie cookie = ResponseCookie.from("token", token)
                 .httpOnly(true)
                 .path("/")
@@ -177,7 +245,12 @@ public class AuthServiceImpl implements AuthService {
                 .maxAge(Duration.ofMinutes(15))
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
 
+    /**
+     * Update last login, cache user info and build response after login success.
+     */
+    private LoginResponse completeLogin(CustomUserDetails currentUser) {
         // update last login
         userService.updateLastLoginDate(currentUser.getId());
 

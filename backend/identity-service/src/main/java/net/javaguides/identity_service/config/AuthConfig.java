@@ -58,6 +58,7 @@ public class AuthConfig {
                         .requestMatchers(
                                 "/api/v1/user/auth/register",
                                 "/api/v1/user/auth/login",
+                                "/api/v1/user/auth/google",
                                 "/api/v1/user/auth/me",
                                 "/api/v1/user/auth/logout",
                                 "/api/v1/user/auth/validate",

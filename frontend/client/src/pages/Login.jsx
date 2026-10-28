@@ -1,5 +1,13 @@
 import React, { useState } from "react";
-import { TextField, Button, Box, Divider, Alert } from "@mui/material";
+import { Button, Box, Divider, Alert } from "@mui/material";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { useForm } from "react-hook-form";
+import CommonTextField from "../components/FormValidate/CommonTextField";
+import { serviceLogin, serviceGoogleLogin } from "../services/AuthService";
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
+const GOOGLE_GSI_SRC = "https://accounts.google.com/gsi/client"
 
 // logo Google nhiều màu (MUI chỉ có icon Google một màu)
 const GoogleLogo = () => (
@@ -10,71 +18,110 @@ const GoogleLogo = () => (
         <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
     </svg>
 );
-import { useNavigate } from "react-router-dom";
-import { serviceLogin } from "../services/AuthService";
-import { useDispatch } from 'react-redux'
 
-import { useForm } from 'react-hook-form';
+// load script Google Identity Services một lần
+let gsiPromise = null
+const loadGoogleScript = () => {
+    if (window.google?.accounts?.oauth2) return Promise.resolve()
+    if (!gsiPromise) {
+        gsiPromise = new Promise((resolve, reject) => {
+            const script = document.createElement("script")
+            script.src = GOOGLE_GSI_SRC
+            script.async = true
+            script.onload = resolve
+            script.onerror = () => {
+                gsiPromise = null
+                reject(new Error("Không tải được Google script"))
+            }
+            document.head.appendChild(script)
+        })
+    }
+    return gsiPromise
+}
+
+const getErrorMessage = (error, fallback) => error.response?.data?.error?.message || fallback
 
 export default function Login() {
-    const navigate = useNavigate();
-
-
+    const navigate = useNavigate()
+    const location = useLocation()
     const dispatch = useDispatch()
 
-    const { handleSubmit } = useForm();
-
-    const [formLogin, setFormLogin] = useState({
-        username: '',
-        password: ''
+    const { control, handleSubmit, formState: { isSubmitting } } = useForm({
+        defaultValues: { username: "", password: "" }
     })
 
+    const [errorMessage, setErrorMessage] = useState(null)
+    const [googleLoading, setGoogleLoading] = useState(false)
 
-
-
-    const onSubmit = async () => {
-        console.log("login check");
-        let res = await serviceLogin(formLogin);
-
-        let data = res.data.data
-
-        // 🔑 lưu JWT
-        localStorage.setItem('token', data.token)
-
-        let userDetail = {
-            id: data.id,
-            userName: formLogin.username,
-            token: data.token,
-            permissions: data.permissions
-        }
-
-
+    // lưu thông tin user sau khi login thành công (dùng chung cho login thường và Google)
+    // JWT nằm trong cookie httpOnly do backend set, frontend không lưu token
+    const handleLoginSuccess = (data) => {
         dispatch({
-            type: 'LOGIN_SUCCESS',
-            payload: userDetail,
+            type: "LOGIN_SUCCESS",
+            payload: {
+                id: data.id,
+                userName: data.userName,
+                permissions: data.permissions
+            },
         })
 
-
-        const params = new URLSearchParams(location.search);
-        const redirectPath = params.get("redirect") || "/";
-        // 👉 vào trang chính
-        navigate(redirectPath, { replace: true });
+        const params = new URLSearchParams(location.search)
+        navigate(params.get("redirect") || "/", { replace: true })
     }
 
-
-    const handleChange = (e) => {
-        setFormLogin({ ...formLogin, [e.target.name]: e.target.value })
+    const onSubmit = async (formData) => {
+        setErrorMessage(null)
+        try {
+            const res = await serviceLogin(formData)
+            handleLoginSuccess(res.data.data)
+        } catch (error) {
+            setErrorMessage(getErrorMessage(error, "Sai tên đăng nhập hoặc mật khẩu."))
+        }
     }
 
-    const [googleMessage, setGoogleMessage] = useState(null)
+    // mở popup Google (authorization code flow) rồi gửi code cho identity-service
+    const handleGoogleLogin = async () => {
+        setErrorMessage(null)
+        if (!GOOGLE_CLIENT_ID) {
+            setErrorMessage("Chưa cấu hình VITE_GOOGLE_CLIENT_ID.")
+            return
+        }
 
-    // TODO: backend (identity-service) chưa hỗ trợ đăng nhập Google (OAuth2)
-    const handleGoogleLogin = () => {
-        setGoogleMessage("Đăng nhập bằng Google đang được phát triển.")
+        setGoogleLoading(true)
+        try {
+            await loadGoogleScript()
+        } catch (e) {
+            setErrorMessage(e.message)
+            setGoogleLoading(false)
+            return
+        }
+
+        const client = window.google.accounts.oauth2.initCodeClient({
+            client_id: GOOGLE_CLIENT_ID,
+            scope: "openid email profile",
+            ux_mode: "popup",
+            callback: async (response) => {
+                if (response.error) {
+                    setErrorMessage("Đăng nhập Google thất bại.")
+                    setGoogleLoading(false)
+                    return
+                }
+                try {
+                    const res = await serviceGoogleLogin(response.code)
+                    handleLoginSuccess(res.data.data)
+                } catch (error) {
+                    setErrorMessage(getErrorMessage(error, "Đăng nhập Google thất bại."))
+                } finally {
+                    setGoogleLoading(false)
+                }
+            },
+            // user đóng popup hoặc popup bị chặn
+            error_callback: () => setGoogleLoading(false),
+        })
+        client.requestCode()
     }
 
     return (
-
         <form onSubmit={handleSubmit(onSubmit)}>
             <Box
                 sx={{
@@ -82,32 +129,35 @@ export default function Login() {
                     margin: "100px auto",
                     display: "flex",
                     flexDirection: "column",
-                    gap: 2
+                    gap: 1
                 }}
             >
-                <TextField
-                    label="Email"
+                <CommonTextField
                     name="username"
-                    onChange={handleChange}
+                    label="Email"
+                    control={control}
+                    rules={{ required: "Vui lòng nhập tên đăng nhập" }}
                 />
 
-                <TextField
+                <CommonTextField
+                    name="password"
                     label="Password"
                     type="password"
-                    name="password"
-                    onChange={handleChange}
+                    control={control}
+                    rules={{ required: "Vui lòng nhập mật khẩu" }}
                 />
 
-                <Button variant="contained" type="submit" sx={{ height: 40 }}>
+                <Button variant="contained" type="submit" disabled={isSubmitting} sx={{ height: 40, mt: 1 }}>
                     Login
                 </Button>
 
-                <Divider>hoặc</Divider>
+                <Divider sx={{ my: 1 }}>hoặc</Divider>
 
                 <Button
                     variant="outlined"
                     startIcon={<GoogleLogo />}
                     onClick={handleGoogleLogin}
+                    disabled={googleLoading}
                     sx={{
                         height: 40,
                         textTransform: "none",
@@ -119,13 +169,12 @@ export default function Login() {
                     Đăng nhập bằng Google
                 </Button>
 
-                {googleMessage && (
-                    <Alert severity="info" onClose={() => setGoogleMessage(null)}>
-                        {googleMessage}
+                {errorMessage && (
+                    <Alert severity="error" onClose={() => setErrorMessage(null)}>
+                        {errorMessage}
                     </Alert>
                 )}
             </Box>
-        </form >
-
+        </form>
     );
 }

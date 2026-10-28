@@ -8,6 +8,7 @@ import net.javaguides.common_lib.dto.ApiResponse;
 import net.javaguides.identity_service.config.CustomUserDetails;
 import net.javaguides.identity_service.dto.AuthRequest;
 import net.javaguides.identity_service.dto.CurrentUserDto;
+import net.javaguides.identity_service.dto.GoogleLoginRequest;
 import net.javaguides.identity_service.dto.LoginResponse;
 import net.javaguides.identity_service.dto.SignUpRequest;
 import net.javaguides.identity_service.service.AuthService;
@@ -55,6 +56,18 @@ public class AuthController {
     }
 
     /**
+     * Login with Google (OAuth2 authorization code flow) and set token cookie
+     * @param googleLoginRequest authorization code from Google
+     * @param response
+     * @return
+     */
+    @PostMapping("/google")
+    public ResponseEntity<ApiResponse<?>> loginWithGoogle(@RequestBody GoogleLoginRequest googleLoginRequest, HttpServletResponse response) {
+        LoginResponse loginResponse = authService.loginWithGoogle(googleLoginRequest, response);
+        return new ResponseEntity<>(ApiResponse.success(loginResponse), HttpStatus.OK);
+    }
+
+    /**
      * Get current user information
      * @param currentUser
      * @return
@@ -73,10 +86,12 @@ public class AuthController {
      */
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<String>> logout(HttpServletResponse response) {
-        // Xoá cookie
+        // Xoá cookie: attributes must match the login cookie (AuthServiceImpl.addTokenCookie)
         ResponseCookie cookie = ResponseCookie.from("token", "")
                 .httpOnly(true)
                 .path("/")
+                .sameSite("None")
+                .secure(true)
                 .maxAge(0) // Xoá cookie ngay lập tức
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());

@@ -6,11 +6,11 @@ import net.javaguides.common_lib.dto.ApiResponse;
 import net.javaguides.common_lib.dto.order.OrderDTO;
 import net.javaguides.common_lib.dto.order.OrderItemDTO;
 import net.javaguides.common_lib.dto.order.OrderMessageEvent;
+import net.javaguides.common_lib.enums.OrderStatus;
 import net.javaguides.order_service.dto.OrderRequestDto;
 import net.javaguides.order_service.dto.product.ProductResponseDto;
 import net.javaguides.order_service.dto.product_variant.ProductVariantResponseDto;
 import net.javaguides.order_service.entity.Order;
-import net.javaguides.order_service.entity.OrderStatus;
 import net.javaguides.order_service.exception.OrderException;
 import net.javaguides.order_service.kafka.OrderProducer;
 import net.javaguides.order_service.kafka.OutboxWriter;
@@ -95,7 +95,7 @@ public class OrderServiceImpl implements OrderService {
     private OrderMessageEvent createOrderMessageEvent(Order createdOrder, String paymentMethod, String email) {
         OrderMessageEvent orderMessageEvent = new OrderMessageEvent();
         orderMessageEvent.setOrderId(createdOrder.getOrderId());
-        orderMessageEvent.setStatus(net.javaguides.common_lib.enums.OrderStatus.PENDING.getDeclaringClass().getName());
+        orderMessageEvent.setStatus(OrderStatus.PENDING.name());
         orderMessageEvent.setPaymentMethod(paymentMethod);
         orderMessageEvent.setEmail(email);
         orderMessageEvent.setUserId(createdOrder.getUserId());
@@ -197,7 +197,7 @@ public class OrderServiceImpl implements OrderService {
     private Order saveOrder(OrderDTO newOrder) {
         Order order = modelMapper.map(newOrder, Order.class);
         order.setOrderId(UUID.randomUUID().toString());
-        order.setStatus(OrderStatus.PENDING.getLabel());
+        order.setStatus(OrderStatus.PENDING.name());
         if (order.getOrderItems() != null) {
             order.getOrderItems().forEach(item -> item.setOrder(order));
         }

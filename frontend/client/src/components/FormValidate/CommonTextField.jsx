@@ -3,7 +3,7 @@ import { TextField } from "@mui/material";
 import { Controller } from "react-hook-form";
 
 const CommonTextField = ({
-    name, control, label, rules
+    name, control, label, rules, type = "text"
 }) => {
     return (
         <Controller
@@ -14,6 +14,7 @@ const CommonTextField = ({
                 <TextField
                     {...field}
                     label={label}
+                    type={type}
                     fullWidth
                     margin="normal"
                     error={!!error}

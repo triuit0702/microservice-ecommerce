@@ -3,6 +3,7 @@ package net.javaguides.identity_service.service;
 import jakarta.servlet.http.HttpServletResponse;
 import net.javaguides.identity_service.dto.AuthRequest;
 import net.javaguides.identity_service.dto.CurrentUserDto;
+import net.javaguides.identity_service.dto.GoogleLoginRequest;
 import net.javaguides.identity_service.dto.LoginResponse;
 import net.javaguides.identity_service.dto.SignUpRequest;
 
@@ -11,4 +12,5 @@ public interface AuthService {
     String generateToken(AuthRequest authRequest, HttpServletResponse response);
     CurrentUserDto getCurrentUser(Long userId);
     LoginResponse login(AuthRequest authRequest, HttpServletResponse response);
+    LoginResponse loginWithGoogle(GoogleLoginRequest googleLoginRequest, HttpServletResponse response);
 }
