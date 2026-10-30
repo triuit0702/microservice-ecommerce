@@ -3,6 +3,8 @@ package net.javaguides.order_service.kafka;
 
 import lombok.RequiredArgsConstructor;
 import net.javaguides.common_lib.dto.order.OrderMessageEvent;
+import net.javaguides.common_lib.enums.InventoryStatus;
+import net.javaguides.common_lib.enums.OrderStatus;
 import net.javaguides.order_service.entity.Order;
 import net.javaguides.order_service.service.OrderService;
 import org.slf4j.Logger;
@@ -35,12 +37,17 @@ public class InventoryConsumer {
         if (Objects.isNull(order)) {
             return;
         }
-        order.setStatus("CANCEL");
-        if (orderMessageEvent.getStatus().equals("RESERVED")) {
-            // Update order status to RESERVED in the database
-            LOGGER.info("Order status updated to RESERVED for orderId: " + orderMessageEvent.getOrderId());
-            order.setStatus("CONFIRMED");
+        // Idempotent: only a PENDING order can be updated; duplicated or late messages are ignored
+        if (!OrderStatus.PENDING.name().equals(order.getStatus())) {
+            LOGGER.info("Order {} already {}, skip inventory result {}",
+                    orderMessageEvent.getOrderId(), order.getStatus(), orderMessageEvent.getStatus());
+            return;
         }
-        orderService.saveOrder(order);
-    }
+        // Map inventory result to order status: RESERVED -> CONFIRMED, otherwise CANCELLED
+        OrderStatus newStatus = InventoryStatus.RESERVED.name().equals(orderMessageEvent.getStatus())
+                ? OrderStatus.CONFIRMED
+                : OrderStatus.CANCELLED;
+        order.setStatus(newStatus.name());
+        LOGGER.info("Order {} status updated to {}", orderMessageEvent.getOrderId(), newStatus);
+        orderService.saveOrder(order);    }
 }

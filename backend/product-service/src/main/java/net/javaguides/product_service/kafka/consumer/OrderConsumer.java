@@ -1,22 +1,20 @@
 package net.javaguides.product_service.kafka.consumer;
 
 import lombok.RequiredArgsConstructor;
-import net.javaguides.common_lib.dto.order.OrderDTO;
-import net.javaguides.common_lib.dto.order.OrderItemDTO;
 import net.javaguides.common_lib.dto.order.OrderMessageEvent;
-import net.javaguides.product_service.entity.ProductVariant;
+import net.javaguides.common_lib.enums.InventoryStatus;
+import net.javaguides.product_service.entity.ProcessedOrder;
 import net.javaguides.product_service.exception.InsufficientStockException;
+import net.javaguides.product_service.exception.ProductException;
 import net.javaguides.product_service.kafka.producer.InventoryProducer;
-import net.javaguides.product_service.service.ProductVariantService;
+import net.javaguides.product_service.service.InventoryService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.CollectionUtils;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
@@ -24,88 +22,72 @@ public class OrderConsumer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OrderConsumer.class);
 
-    private final ProductVariantService productVariantService;
+    private final InventoryService inventoryService;
     private final InventoryProducer inventoryProducer;
 
+    /**
+     * Reserve stock for a new order and reply RESERVED / CANCEL to order-service.
+     * Not transactional on purpose: the stock transaction commits inside InventoryService
+     * before the result is published, so order-service never sees RESERVED for a rolled-back reservation.
+     */
     @KafkaListener(topics = "${spring.kafka.create-order-topic.name}", groupId = "${spring.kafka.consumer.group-id}")
-    @Transactional
     public void consume(OrderMessageEvent orderEvent) {
         LOGGER.info("Received OrderEvent: {}", orderEvent);
 
-        //OrderDTO orderDTO = orderEvent.getOrderDTO();
-        Set<Long> variantIds = orderEvent.getOrderItems().stream()
-                .map(OrderItemDTO::getVariantId)
-                .collect(Collectors.toSet());
-
-        // get list product variant by variantIds
-        List<ProductVariant> variants = Optional.ofNullable(
-                productVariantService.getProductVariantByIds(variantIds)
-        ).orElse(Collections.emptyList());
-
-        if (CollectionUtils.isEmpty(variants)) {
+        String orderId = orderEvent.getOrderId();
+        if (orderId == null) {
+            LOGGER.error("Skip OrderEvent without orderId: {}", orderEvent);
             return;
         }
 
-        // create map variantId -> ProductVariant for easy access
-        Map<Long, ProductVariant> variantMap = variants.stream()
-                .collect(Collectors.toMap(ProductVariant::getId, variant -> variant));
-
-        // update stock
-        updateStock(orderEvent, variantMap);
-    }
-
-    /**
-     * Update the stock quantity of product variants based on the order items.
-     *
-     * @param orderEvent   The order data transfer object containing order items.
-     * @param variantMap A map of variant IDs to ProductVariant objects for easy access.
-     */
-    @Transactional
-    private void updateStock(OrderMessageEvent orderEvent, Map<Long, ProductVariant> variantMap) {
-
-        List<ProductVariant> productVariantList = new ArrayList<>();
-        for (OrderItemDTO orderItem : orderEvent.getOrderItems()) {
-
-            Long variantId = orderItem.getVariantId();
-            ProductVariant productVariant = variantMap.get(variantId);
-
-            if (productVariant == null) {
-                LOGGER.error("ProductVariant with id {} not found.", variantId);
-                throw new RuntimeException("ProductVariant with id " + variantId + " not found.");
+        // Redelivered message: never touch stock again
+        Optional<ProcessedOrder> processedOrder = inventoryService.findProcessedOrder(orderId);
+        if (processedOrder.isPresent()) {
+            if (processedOrder.get().isPublished()) {
+                LOGGER.info("Duplicate OrderEvent {}, result already sent, skip", orderId);
+                return;
             }
-
-            int requiredQuantity = orderItem.getQuantity();
-            int currentStock = productVariant.getStockQuantity();
-            int updatedStock = currentStock - requiredQuantity;
-
-            if (updatedStock < 0) {
-                LOGGER.error("Insufficient stock for variant {}. Required: {}, Available: {}", variantId, requiredQuantity, currentStock);
-                sendOrderStatusUpdate(orderEvent,"CANCEL");
-                throw new InsufficientStockException("Insufficient stock for variant " + variantId);
-            }
-
-            productVariant.setStockQuantity(updatedStock);
-            productVariantList.add(productVariant);
+            // Stock was handled but the previous send failed: send the stored result
+            LOGGER.info("Order {} already processed with status {}, sending pending result", orderId, processedOrder.get().getStatus());
+            publishResult(orderId, processedOrder.get().getStatus());
+            return;
         }
 
-        productVariantService.saveAllListVariant(productVariantList);
-
-        // push event to kafka for order status update
-        sendOrderStatusUpdate(orderEvent,"RESERVED");
-
+        reserveStock(orderEvent).ifPresent(status -> publishResult(orderId, status));
     }
 
     /**
-     * Send an order status update to the Kafka topic.
-     *
-     * @param orderEvent The order event containing order details.
-     * @param status   The new status of the order (e.g., "RESERVED", "CANCEL").
+     * Try to reserve stock; business failures become CANCEL, technical failures are rethrown for Kafka retry.
+     * @return result to publish, or empty if another consumer is handling the same order
      */
-    private void sendOrderStatusUpdate(OrderMessageEvent orderEvent, String status) {
-        OrderMessageEvent updatedOrderDTO = new OrderMessageEvent();
-        updatedOrderDTO.setOrderId(orderEvent.getOrderId());
-        updatedOrderDTO.setStatus(status);
+    private Optional<InventoryStatus> reserveStock(OrderMessageEvent orderEvent) {
+        String orderId = orderEvent.getOrderId();
+        try {
+            inventoryService.reserveStock(orderId, orderEvent.getOrderItems());
+            LOGGER.info("Order {} reserved", orderId);
+            return Optional.of(InventoryStatus.RESERVED);
+        } catch (InsufficientStockException | ProductException e) {
+            // Reservation transaction is fully rolled back here, no partial stock deduction
+            LOGGER.warn("Order {} cancelled: {}", orderId, e.getMessage());
+            inventoryService.markCancelled(orderId);
+            return Optional.of(InventoryStatus.CANCEL);
+        } catch (DataIntegrityViolationException e) {
+            // Another consumer processed the same order concurrently; it publishes the result itself
+            LOGGER.info("Order {} is being processed by another consumer, skip", orderId);
+            return Optional.empty();
+        }
+    }
 
-        inventoryProducer.sendOrderStatusUpdate(updatedOrderDTO);
+    /**
+     * Send the result to order-service, then flag it as published.
+     * If sending fails, the exception triggers a Kafka redelivery and the result is sent again.
+     */
+    private void publishResult(String orderId, InventoryStatus status) {
+        OrderMessageEvent updatedOrderEvent = new OrderMessageEvent();
+        updatedOrderEvent.setOrderId(orderId);
+        updatedOrderEvent.setStatus(status.name());
+
+        inventoryProducer.sendOrderStatusUpdate(updatedOrderEvent);
+        inventoryService.markPublished(orderId);
     }
 }

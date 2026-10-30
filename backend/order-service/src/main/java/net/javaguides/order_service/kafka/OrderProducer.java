@@ -33,7 +33,7 @@ public class OrderProducer {
                 .build();
         //kafkaTemplate.send(message);
 
-        kafkaTemplate.send("create_order_topic", orderEvent)
+        kafkaTemplate.send(topic.name(), orderEvent)
                 .whenComplete((result, ex) -> {
                     if (ex != null) {
                         LOGGER.error("Send Kafka failed", ex);

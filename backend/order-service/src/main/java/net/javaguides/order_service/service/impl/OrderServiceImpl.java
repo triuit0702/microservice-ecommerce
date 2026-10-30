@@ -20,6 +20,7 @@ import net.javaguides.order_service.service.ProductAPIClient;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +43,9 @@ public class OrderServiceImpl implements OrderService {
     private final ProductAPIClient productAPIClient;
 
     private final OutboxWriter outboxWriter;
+
+    @Value("${spring.kafka.create-order-topic.name}")
+    private String createOrderTopic;
 
 //    @Override
 //    @Transactional
@@ -81,7 +85,7 @@ public class OrderServiceImpl implements OrderService {
             OrderMessageEvent orderMessageEvent = createOrderMessageEvent(createdOrder, orderRequestDto.getPaymentMethod(), email);
 
             // ghi event vào outbox, cùng transaction với đơn hàng
-            outboxWriter.save("create_order_topic", createdOrder.getOrderId(), orderMessageEvent);
+            outboxWriter.save(createOrderTopic, createdOrder.getOrderId(), orderMessageEvent);
 
             return modelMapper.map(createdOrder, OrderDTO.class);
         } catch (OrderException e) {
