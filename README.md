@@ -34,7 +34,20 @@ React clients ──HTTP──► api-gateway :9191 ──┬──► identity-
 
 ### Place order flow (Saga with Kafka)
 
-The order process is a **choreography saga** between order-service and product-service. It uses two topics, one per direction.
+Each service owns its database, so placing an order cannot use one shared transaction.
+It is a **choreography saga**: the work is split into local transactions in each service,
+linked by Kafka events, with no central coordinator.
+
+| Step | Service | Local transaction | Result |
+|---|---|---|---|
+| T1 | order-service | Save order `PENDING` + outbox event | Event to `create_order_topic` |
+| T2 | product-service | Decrease stock + record `processed_orders` | `RESERVED`, or rolled back → `CANCEL` |
+| T3 | order-service | `PENDING` → `CONFIRMED` / `CANCELLED` | End |
+
+**Compensation:** if T2 fails (out of stock), T1 is already committed and cannot be rolled back,
+so order-service compensates by setting the order to `CANCELLED`.
+
+Two topics are used, one per direction:
 
 | Topic (config key) | Name | Producer → Consumer | Payload |
 |---|---|---|---|
@@ -44,30 +57,31 @@ The order process is a **choreography saga** between order-service and product-s
 Topic names are always read from config, never hard-coded.
 
 ```
-Client ──POST /api/v1/order──► Gateway (Auth) ──► order-service / OrderController
-                                                     │ 1. Feign → identity-service /auth/me (forward cookie)
-                                                     │ 2. Feign → product-service: validate stock and price
-                                                     │ 3. ONE DB transaction:
-                                                     │      - save Order (status = PENDING)
-                                                     │      - save OutboxEvent (status = 0 / NEW)
-                                                     ▼
-◄── 201 Created (order PENDING) ────────────────────┘
+Client ──POST /api/v1/order──► order-service / OrderController
+                                  │ 1. Feign → product-service: pre-check stock and price 
+                                  │ 2. One DB transaction (T1):
+                                  │      - save Order (PENDING)
+                                  │      - save OutboxEvent (NEW)
+                                  ▼
+◄── 3. 201 Created (order PENDING)
 
 OutboxPublisherJob (every 1s, batch 500)
-   │ 4. read NEW outbox events → send to Kafka and wait for broker ACK → mark as SENT
+   │ 4. read NEW events → send to Kafka, wait for broker ACK → mark SENT
    ▼
 create_order_topic
    ▼
-product-service / OrderConsumer
-   │ 5. duplicate check (processed_orders)
-   │ 6. trừ stock bằng UPDATE có điều kiện
-   │ 7. send RESERVED or CANCEL → mark result as published
+product-service / OrderConsumer (T2)
+   │ 5. skip if order already in processed_orders (duplicate message)
+   │ 6. decrease stock with a conditional UPDATE (stock >= quantity)
+   │ 7. send RESERVED or CANCEL → set published = true
    ▼
 update_order_topic
    ▼
-order-service / InventoryConsumer
-     8. if order is PENDING: RESERVED → CONFIRMED, CANCEL → CANCELLED
+order-service / InventoryConsumer (T3)
+     8. only if order is PENDING: RESERVED → CONFIRMED, CANCEL → CANCELLED
 ```
+
+Details:  [OrderConsumer_ErrorHandling.md](backend/OrderConsumer_ErrorHandling.md)
 
 ## Tech stack
 - Frontend : React js
@@ -105,7 +119,7 @@ microservice-ecommerce-clone/
 
 cd backend/env  
 ``
-docker-compose -f docker-compose.yml up -d  ``
+docker-compose -f docker-compose-dev.yml up -d  ``
 
 
 Start each microservice manually from IntelliJ IDEA in the following:
@@ -150,6 +164,3 @@ cd /frontend/client``
 If this is your first time running the application: ``npm install``  
 ``
 npm run dev``  
-
-##  TODO
-- The client page doesn't have a login feature yet, so for now , use the admin page to create users for clients.
