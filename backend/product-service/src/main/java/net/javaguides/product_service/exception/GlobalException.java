@@ -85,6 +85,18 @@ public class GlobalException {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
+    @ExceptionHandler(CartAccessException.class)
+    public ResponseEntity<ApiResponse<String>> handleCartAccessException(CartAccessException ex) {
+        log.warn("Cart access denied: {}", ex.getMessage());
+        return new ResponseEntity<>(ApiResponse.error(ex.getMessage()), ex.getStatus());
+    }
+
+    @ExceptionHandler(CartException.class)
+    public ResponseEntity<ApiResponse<String>> handleCartException(CartException ex) {
+        log.warn("Cart error: {}", ex.getMessage());
+        return new ResponseEntity<>(ApiResponse.error(ex.getMessage()), ex.getStatus());
+    }
+
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
     public ResponseEntity<?> handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
 

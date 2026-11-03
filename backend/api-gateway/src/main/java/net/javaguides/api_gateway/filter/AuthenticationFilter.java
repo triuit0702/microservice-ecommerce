@@ -2,6 +2,7 @@ package net.javaguides.api_gateway.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.javaguides.api_gateway.util.JwtUtil;
+import net.javaguides.api_gateway.util.UserHeaders;
 import net.javaguides.common_lib.dto.ApiResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
@@ -49,12 +50,32 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
                     return this.onError(exchange, "Missing or invalid token in cookies", HttpStatus.UNAUTHORIZED);
                 }
 
+                Long userId;
+                String email;
                 try {
                     // Kiểm tra tính hợp lệ của token
                     jwtUtil.validateToken(token);
+                    userId = jwtUtil.extractUserId(token);
+                    email = jwtUtil.extractEmail(token);
                 } catch (Exception e) {
                     return this.onError(exchange, "Unauthorized access", HttpStatus.UNAUTHORIZED);
                 }
+
+                // Token cũ (trước khi có claim userId) -> bắt đăng nhập lại
+                if (userId == null) {
+                    return this.onError(exchange, "Token is outdated, please login again", HttpStatus.UNAUTHORIZED);
+                }
+
+                // Gắn thông tin user cho service phía sau (header client gửi đã bị StripUserHeadersFilter xoá)
+                ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
+                        .headers(h -> {
+                            h.set(UserHeaders.USER_ID, String.valueOf(userId));
+                            if (email != null) {
+                                h.set(UserHeaders.USER_EMAIL, email);
+                            }
+                        })
+                        .build();
+                return chain.filter(exchange.mutate().request(mutatedRequest).build());
             }
             return chain.filter(exchange);
         };

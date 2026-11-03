@@ -10,6 +10,7 @@ import net.javaguides.identity_service.enums.ERole;
 import net.javaguides.identity_service.exception.ResourceNotFoundException;
 import net.javaguides.identity_service.repository.RoleRepository;
 import net.javaguides.identity_service.repository.UserCredentialRepository;
+import net.javaguides.identity_service.service.UserCacheService;
 import net.javaguides.identity_service.service.UserService;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
@@ -27,6 +28,7 @@ public class UserServiceImpl implements UserService {
     private final UserCredentialRepository userCredentialRepository;
     private final RoleRepository roleRepository;
     private final ModelMapper modelMapper;
+    private final UserCacheService userCacheService;
 
 
     @Override
@@ -67,6 +69,9 @@ public class UserServiceImpl implements UserService {
         UserCredential user = optUser.get();
         user.setDelFlg(true);
         userCredentialRepository.save(user);
+
+        // deleted user must not be served from cache
+        userCacheService.evictUser(userId);
     }
 
     @Audit(action = "USER_UPDATE", resourceClass = SignUpRequest.class, idField = "id")
@@ -94,6 +99,9 @@ public class UserServiceImpl implements UserService {
         roles.add(role);
         user.setRoles(roles);
         userCredentialRepository.save(user);
+
+        // name/email/roles changed -> drop stale cached permissions
+        userCacheService.evictUser(user.getId());
     }
 
     @Override

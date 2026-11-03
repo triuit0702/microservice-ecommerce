@@ -59,7 +59,8 @@ export default function Navbar() {
 
     useEffect(() => {
         if (user?.id) {
-            getCartByUserId(user.id).then((response) => {
+            // skipAuthRedirect: vào trang chủ không bị đá về /login khi token hết hạn
+            getCartByUserId(user.id, { skipAuthRedirect: true }).then((response) => {
 
                 dispatch(clearCart());
 
@@ -67,6 +68,12 @@ export default function Navbar() {
                     addListToCart(response.data.items)
                 )
             }).catch((err) => {
+                if (err.response?.status === 401) {
+                    // Token hết hạn / token cũ: xoá user đã persist để Navbar hiện nút Login
+                    dispatch({ type: 'LOGOUT' });
+                    dispatch(clearCart());
+                    return;
+                }
                 console.error("Error fetching cart:", err);
             });
         }

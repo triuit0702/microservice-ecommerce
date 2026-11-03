@@ -53,6 +53,18 @@ public class JwtUtil {
     }
 
 
+    /**
+     * Extract the user ID claim; returns null if the token has no userId (tokens issued before this claim existed).
+     */
+    public Long extractUserId(String token) {
+        Object userId = getClaims(token).get("userId");
+        return userId instanceof Number number ? number.longValue() : null;
+    }
+
+    public String extractEmail(String token) {
+        return getClaims(token).get("email", String.class);
+    }
+
     private Claims getClaims(String token) {
         return Jwts.parser()
                 .setSigningKey(getSignKey())

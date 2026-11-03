@@ -5,7 +5,7 @@ const API_URL = "/api/v1/product/cart";
 
 
 
-export const getCartByUserId = (userId) => axiosClient.get(`${API_URL}/${userId}`);
+export const getCartByUserId = (userId, config = {}) => axiosClient.get(`${API_URL}/${userId}`, config);
 
 export const deleteCartByUserId = (userId) => axiosClient.delete(`${API_URL}/${userId}`);
 

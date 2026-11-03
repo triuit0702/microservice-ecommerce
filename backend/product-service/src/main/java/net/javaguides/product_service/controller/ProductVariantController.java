@@ -67,12 +67,5 @@ public class ProductVariantController {
 
     }
 
-    @DeleteMapping("{variantId}")
-    public ResponseEntity<ApiResponse<?>> deleteVariant(@PathVariable Long variantId) {
-        productVariantService.deleteProductVariant(variantId);
-        return ResponseEntity.noContent().build();
-    }
-
-
     // Các API khác như update, delete nếu cần
 }

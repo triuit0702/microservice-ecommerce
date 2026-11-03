@@ -15,7 +15,6 @@ public interface ProductVariantService {
     ProductVariantResponseDto createProductVariant(String productId, BigDecimal price, String sku, Integer initialStock, Integer reorderLevel);
     List<ProductVariantResponseDto> getVariantsByProductId(String productId);
     ProductVariantResponseDto updateProductVariant(Long variantId, UpdateProductVariantRequestDto updateDTO);
-    void deleteProductVariant(Long variantId);
     List<ProductVariant> getProductVariantByIds(Set<Long> variantIds);
     ProductVariant getVariantById(Long variantId);
     void saveProductVariant(ProductVariant productVariant);

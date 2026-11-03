@@ -15,19 +15,22 @@ spring:
           predicates:
             - Path=/api/v1/user/**
 
+        # Route cho Product Service - Giỏ hàng (mọi method, yêu cầu đăng nhập)
+        # Phải đặt TRƯỚC product-service-read / product-service-write vì gateway match route theo thứ tự
+        - id: product-cart
+          uri: lb://PRODUCT-SERVICE
+          predicates:
+            - Path=/api/v1/product/cart/**
+            - Method=GET,POST,PUT,DELETE
+          filters:
+            - name: AuthenticationFilter
+
         # Route cho Product Service - Đọc dữ liệu
         - id: product-service-read
           uri: lb://PRODUCT-SERVICE
           predicates:
             - Path=/api/v1/product/**
             - Method=GET
-
-      # Route cho Product Service - Thêm sản phẩm vào giỏ hàng
-        - id: product-cart-add
-          uri: lb://PRODUCT-SERVICE
-          predicates:
-           - Path=/api/v1/product/cart/**
-           - Method=POST,DELETE
 
         # Route cho Product Service - Ghi dữ liệu
         - id: product-service-write

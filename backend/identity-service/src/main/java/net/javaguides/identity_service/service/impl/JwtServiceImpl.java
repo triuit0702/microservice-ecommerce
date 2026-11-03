@@ -25,6 +25,8 @@ public class JwtServiceImpl implements JwtService {
 
         return Jwts.builder()
                 .setSubject(userPrincipal.getUsername())
+                // api-gateway reads this claim and forwards it as X-User-Id
+                .claim("userId", userPrincipal.getId())
                 .claim("roles", roles)
                 .claim("permissions", userPrincipal.getPermissions())
                 .claim("email", userPrincipal.getEmail())

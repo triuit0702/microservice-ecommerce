@@ -33,20 +33,4 @@ public class ProductRedis {
         }
     }
 
-    public ProductCacheDto findByProductId(String id){
-        try {
-            return (ProductCacheDto) redisTemplate.opsForHash().get(HASH_KEY, id);
-        }catch(Exception e){
-            return null;
-        }
-    }
-
-    public void deleteByProductId(String id){
-        try {
-            redisTemplate.opsForHash().delete(HASH_KEY, id);
-        }catch(Exception e){
-            throw new ResourceNotFoundException("Not Found", e);
-        }
-    }
-
 }

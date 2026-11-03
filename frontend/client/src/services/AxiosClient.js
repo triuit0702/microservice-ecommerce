@@ -35,9 +35,10 @@ axiosClient.interceptors.response.use(
         // ✅ 401: chưa login -> về login
         if (status === 401) {
 
-            // useDispatch({
-            //     type: 'LOGOUT'
-            // })
+            // Request chạy nền (vd: load giỏ hàng ở Navbar) tự xử lý 401, không redirect
+            if (error.config?.skipAuthRedirect) {
+                return Promise.reject(error);
+            }
             if (window.location.pathname !== '/login') {
                 window.location.href = '/login';
             }

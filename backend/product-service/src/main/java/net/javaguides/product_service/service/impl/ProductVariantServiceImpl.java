@@ -84,25 +84,6 @@ public class ProductVariantServiceImpl implements ProductVariantService {
         return modelMapper.map(updatedVariant, ProductVariantResponseDto.class);
     }
 
-    /**
-     * Xóa một ProductVariant
-     */
-    @Transactional
-    public void deleteProductVariant(Long variantId) {
-        ProductVariant variant = productVariantRepository.findById(variantId)
-                .orElseThrow(() -> new ResourceNotFoundException("ProductVariant not found"));
-
-        Product product = variant.getProduct();
-
-        // Xóa ProductVariant
-        productVariantRepository.delete(variant);
-
-        // Gọi Stock Service để xóa tồn kho
-//        stockClient.deleteStock(variantId);
-
-        // Cập nhật cache cho sản phẩm
-        productRedis.save(product);
-    }
 
     @Override
     public void saveProductVariant(ProductVariant productVariant) {
