@@ -58,6 +58,7 @@ management:
         include: "*"
 
 cloudinary:
-  cloud-name: shopdevtri
-  api-key: 143461846963669
-  api-secret: UfWn51bYtNL1v5OYnXmO2lwKBqI
+  # Secrets come from env vars, never hard-code them here
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:shopdevtri}
+  api-key: ${CLOUDINARY_API_KEY:}
+  api-secret: ${CLOUDINARY_API_SECRET:}
