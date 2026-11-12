@@ -1,6 +1,7 @@
 package net.javaguides.order_service.service.impl;
 
 
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import net.javaguides.common_lib.dto.ApiResponse;
 import net.javaguides.common_lib.dto.order.OrderDTO;
@@ -11,6 +12,7 @@ import net.javaguides.order_service.dto.OrderRequestDto;
 import net.javaguides.order_service.dto.product.ProductResponseDto;
 import net.javaguides.order_service.dto.product_variant.ProductVariantResponseDto;
 import net.javaguides.order_service.entity.Order;
+import net.javaguides.order_service.entity.ShippingInfo;
 import net.javaguides.order_service.exception.OrderException;
 import net.javaguides.order_service.kafka.OrderProducer;
 import net.javaguides.order_service.kafka.OutboxWriter;
@@ -25,10 +27,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -44,8 +50,9 @@ public class OrderServiceImpl implements OrderService {
 
     private final OutboxWriter outboxWriter;
 
-    @Value("${spring.kafka.create-order-topic.name}")
-    private String createOrderTopic;
+    // Decided by the server, never taken from the request (frontend shows the same value)
+    @Value("${order.shipping-fee:10}")
+    private BigDecimal shippingFee;
 
 //    @Override
 //    @Transactional
@@ -72,20 +79,31 @@ public class OrderServiceImpl implements OrderService {
      * @param orderRequestDto The order request DTO containing order details.
      * @param userId          The ID of the user placing the order.
      * @param email           The email of the user placing the order.
-     * @return The created OrderDTO.
+     * @param idempotencyKey  Client key of this checkout attempt; a repeated key returns the existing order.
+     * @return The created (or previously created) OrderDTO.
      */
+    @Override
     @Transactional
-    public OrderDTO placeOrder(OrderRequestDto orderRequestDto, Long userId, String email) {
-        try {
-            OrderDTO newOrder = createOrderDTO(orderRequestDto, userId);
-            validateStockAndPrice(orderRequestDto.getOrderItems());
+    public OrderDTO placeOrder(OrderRequestDto orderRequestDto, Long userId, String email, String idempotencyKey) {
+        // Fast path: same key already used (double click / retry after success) -> return the existing order
+        Optional<Order> existingOrder = orderRepository.findByUserIdAndIdempotencyKey(userId, idempotencyKey);
+        if (existingOrder.isPresent()) {
+            LOGGER.info("Duplicate order request for user {} with idempotency key {}, returning order {}",
+                    userId, idempotencyKey, existingOrder.get().getOrderId());
+            return modelMapper.map(existingOrder.get(), OrderDTO.class);
+        }
 
-            Order createdOrder = saveOrder(newOrder);
+        try {
+            List<ValidatedItem> items = validateStockAndPrice(orderRequestDto.getOrderItems());
+
+            Order order = buildOrder(orderRequestDto, items, userId, idempotencyKey);
+            // Flush now so a duplicate idempotency key fails here (before the outbox event is written)
+            Order createdOrder = orderRepository.saveAndFlush(order);
            // sendOrderEvent(createdOrder, orderRequestDto.getPaymentMethod(), email);
             OrderMessageEvent orderMessageEvent = createOrderMessageEvent(createdOrder, orderRequestDto.getPaymentMethod(), email);
 
             // ghi event vào outbox, cùng transaction với đơn hàng
-            outboxWriter.save(createOrderTopic, createdOrder.getOrderId(), orderMessageEvent);
+            outboxWriter.save(createdOrder.getOrderId(), orderMessageEvent);
 
             return modelMapper.map(createdOrder, OrderDTO.class);
         } catch (OrderException e) {
@@ -128,32 +146,94 @@ public class OrderServiceImpl implements OrderService {
     }
 
 
-    private OrderDTO createOrderDTO(OrderRequestDto orderRequestDto, Long userId) {
-        OrderDTO newOrder = modelMapper.map(orderRequestDto, OrderDTO.class);
-        newOrder.setUserId(userId);
-        return newOrder;
+    /**
+     * Build the order entity from the request and the validated items. Client-supplied
+     * orderId/status/totals/prices are ignored; totals are computed by the entity.
+     */
+    private Order buildOrder(OrderRequestDto req, List<ValidatedItem> items, Long userId, String idempotencyKey) {
+        ShippingInfo shippingInfo = new ShippingInfo(req.getAddress(), req.getPhone(), req.getReceiverName(), req.getEmail());
+        Order order = Order.create(userId, idempotencyKey, shippingInfo, shippingFee);
+        items.forEach(i -> order.addItem(i.productId(), i.variantId(), i.quantity(), i.unitPrice(), i.color()));
+        return order;
     }
 
+    /** Order line after validation, carrying the server-side unit price. */
+    private record ValidatedItem(String productId, Long variantId, int quantity,
+                                 BigDecimal unitPrice, String color) {}
 
-    private void validateStockAndPrice(List<OrderItemDTO> orderItems) {
-        Set<String> productIds = extractProductIds(orderItems);
-        List<ProductResponseDto> products = fetchProducts(productIds);
+    /**
+     * Validates order items against product-service and returns them with server-side prices.
+     * Stock check is fail-fast only; the real reservation happens later in product-service.
+     */
+    private List<ValidatedItem> validateStockAndPrice(List<OrderItemDTO> items) {
+        validateItems(items);                                               // 1. input is well-formed
+        Map<String, ProductResponseDto> productsById = loadProducts(items); // 2. all products exist
+        checkStock(items, productsById);                                    // 3. enough stock per variant
+        return applyServerPrices(items, productsById);                      // 4. never trust client price
+    }
 
-        if (products.size() != productIds.size()) {
-            throw new OrderException("product not found in DB for ids: " + productIds, HttpStatus.BAD_REQUEST);
+    private Map<String, ProductResponseDto> loadProducts(List<OrderItemDTO> items) {
+        Set<String> ids = extractProductIds(items);
+        Map<String, ProductResponseDto> productsById = fetchProducts(ids).stream()
+                .collect(Collectors.toMap(ProductResponseDto::getId, Function.identity(), (a, b) -> a));
+
+        Set<String> missingProductIds = new HashSet<>(ids);
+        missingProductIds.removeAll(productsById.keySet());
+        if (!missingProductIds.isEmpty()) {
+            LOGGER.warn("Products not found: {}", missingProductIds);
+            throw new OrderException("Some products are no longer available", HttpStatus.BAD_REQUEST);
         }
+        return productsById;
+    }
 
-        Map<String, ProductResponseDto> productsMap = products.stream()
-                .collect(Collectors.toMap(ProductResponseDto::getId, Function.identity()));
-
-        for (OrderItemDTO orderItem : orderItems) {
-            ProductResponseDto product = productsMap.get(orderItem.getProductId());
-            if (product == null) {
-                throw new OrderException("Not found product!", HttpStatus.NOT_FOUND);
+    /** Stock belongs to the variant, so lines of the same variant are summed before checking. */
+    private void checkStock(List<OrderItemDTO> items, Map<String, ProductResponseDto> productsById) {
+        Map<Long, Integer> requestedPerVariant = new HashMap<>();
+        for (OrderItemDTO item : items) {
+            ProductResponseDto product = productsById.get(item.getProductId());
+            ProductVariantResponseDto variant = resolveVariant(product, item.getVariantId());
+            int requested = requestedPerVariant.merge(variant.getId(), item.getQuantity(), Integer::sum);
+            int available = Objects.requireNonNullElse(variant.getStockQuantity(), 0);
+            if (available < requested) {
+                LOGGER.info("Insufficient stock for variantId {}: requested {}, available {}",
+                        variant.getId(), requested, available);
+                throw new OrderException("Not enough stock for " + product.getName(), HttpStatus.BAD_REQUEST);
             }
+        }
+    }
 
-            //* UPDATE PRICE AND VALIDATE STOCK
-            updatePriceAndValidateStock(orderItem, product);
+    private List<ValidatedItem> applyServerPrices(List<OrderItemDTO> items,
+                                                  Map<String, ProductResponseDto> productsById) {
+        return items.stream()
+                .map(item -> {
+                    ProductResponseDto product = productsById.get(item.getProductId());
+                    ProductVariantResponseDto variant = resolveVariant(product, item.getVariantId());
+                    return new ValidatedItem(item.getProductId(), item.getVariantId(), item.getQuantity(),
+                            priceOf(product, variant), item.getColor());
+                })
+                .toList();
+    }
+
+    /** Variant price if set, otherwise the product price. */
+    private BigDecimal priceOf(ProductResponseDto product, ProductVariantResponseDto variant) {
+        BigDecimal price = variant.getPrice() != null ? variant.getPrice() : product.getPrice();
+        if (price == null) {
+            throw new OrderException("Price not available for " + product.getName(), HttpStatus.BAD_REQUEST);
+        }
+        return price;
+    }
+
+    private void validateItems(List<OrderItemDTO> orderItems) {
+        if (orderItems == null || orderItems.isEmpty()) {
+            throw new OrderException("Order must contain at least one item", HttpStatus.BAD_REQUEST);
+        }
+        for (OrderItemDTO item : orderItems) {
+            if (item == null || item.getProductId() == null) {
+                throw new OrderException("Order item must have a productId", HttpStatus.BAD_REQUEST);
+            }
+            if (item.getQuantity() == null || item.getQuantity() <= 0) {
+                throw new OrderException("Item quantity must be greater than 0", HttpStatus.BAD_REQUEST);
+            }
         }
     }
 
@@ -164,49 +244,36 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private List<ProductResponseDto> fetchProducts(Set<String> productIds) {
-
-        ApiResponse<List<ProductResponseDto>> response =
-                productAPIClient.getProductsByIds(productIds).getBody();
-
-        if (response == null || response.getData() == null) {
-            throw new RuntimeException("Cannot fetch products");
-        }
-
-        return response.getData();
-    }
-
-    private void updatePriceAndValidateStock(OrderItemDTO orderItem, ProductResponseDto product) {
-        // get variant from DB
-        ProductVariantResponseDto selectedVariant = findMatchingVariant(product.getVariants(), orderItem.getVariantId());
-        if (selectedVariant != null) {
-            // compare stock quantity in DB with quantity from UI
-            if (selectedVariant.getStockQuantity() < orderItem.getQuantity()) {
-                LOGGER.info("Insufficient stock for variantId: {}", selectedVariant.getId());
-                throw new OrderException(
-                        "Not enough stock for " + product.getName(),
-                        HttpStatus.BAD_REQUEST
-                );
+        try {
+            ApiResponse<List<ProductResponseDto>> body = productAPIClient.getProductsByIds(productIds).getBody();
+            if (body == null || body.getData() == null) {
+                throw new OrderException("Product service returned no data", HttpStatus.BAD_GATEWAY);
             }
+            return body.getData();
+        } catch (FeignException e) {
+            LOGGER.error("Product service call failed, status {}: {}", e.status(), e.getMessage());
+            throw new OrderException("Product service is unavailable, please try again later",
+                    HttpStatus.SERVICE_UNAVAILABLE);
         }
     }
 
-    private ProductVariantResponseDto findMatchingVariant(List<ProductVariantResponseDto> variants, Long variantId) {
-        if (variants == null) return null;
+    /**
+     * Resolves the ordered variant. Stock is tracked per variant, so a product
+     * without variants cannot be ordered and a valid variantId is always required.
+     */
+    private ProductVariantResponseDto resolveVariant(ProductResponseDto product, Long variantId) {
+        List<ProductVariantResponseDto> variants = product.getVariants();
+        if (variants == null || variants.isEmpty()) {
+            throw new OrderException(product.getName() + " is not available for sale", HttpStatus.BAD_REQUEST);
+        }
+        if (variantId == null) {
+            throw new OrderException("Variant is required for " + product.getName(), HttpStatus.BAD_REQUEST);
+        }
         return variants.stream()
-                .filter(v -> v.getId().equals(variantId))
+                .filter(v -> variantId.equals(v.getId()))
                 .findFirst()
-                .orElse(null);
-    }
-
-    private Order saveOrder(OrderDTO newOrder) {
-        Order order = modelMapper.map(newOrder, Order.class);
-        order.setOrderId(UUID.randomUUID().toString());
-        order.setStatus(OrderStatus.PENDING.name());
-        if (order.getOrderItems() != null) {
-            order.getOrderItems().forEach(item -> item.setOrder(order));
-        }
-
-        return orderRepository.save(order);
+                .orElseThrow(() -> new OrderException(
+                        "Variant " + variantId + " not found for " + product.getName(), HttpStatus.BAD_REQUEST));
     }
 
 //    private void sendOrderEvent(Order createdOrder, String paymentMethod, String email) {

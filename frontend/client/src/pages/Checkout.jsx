@@ -1,12 +1,17 @@
 import { Alert, Box, Button, Card, CardContent, Container, Divider, FormControlLabel, Grid, IconButton, List, ListItem, Paper, Radio, RadioGroup, Step, StepLabel, Stepper, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography } from "@mui/material";
 import { deleteCartByUserId, getCartByUserId } from "../services/CartService";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import CommonTextField from "../components/FormValidate/CommonTextField";
 import { orderService } from "../services/CheckoutService";
 import { clearCart } from "../features/cartSlice";
+
+// crypto.randomUUID is only available in secure contexts (https / localhost)
+const generateIdempotencyKey = () =>
+    (window.crypto?.randomUUID?.()) ??
+    `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
 
 
 export default function Checkout() {
@@ -33,6 +38,11 @@ export default function Checkout() {
     const user = useSelector(state => state.auth.user);
 
     const [items, setItems] = useState([]);
+
+    // One key per checkout attempt: kept across retries (a failed order is rolled back, so the key stays free),
+    // a new one is generated when the page is opened again after a successful order.
+    const idempotencyKeyRef = useRef(generateIdempotencyKey());
+    const [submitting, setSubmitting] = useState(false);
 
 
     // error message 
@@ -74,6 +84,10 @@ export default function Checkout() {
 
     }))
     const submitOrder = async (data) => {
+        if (submitting) return;
+        setSubmitting(true);
+        setGlobalError(null);
+
         const order = {
             ...data,
             receiverName: user.userName,
@@ -92,7 +106,7 @@ export default function Checkout() {
 
         try {
             // execute submit
-            await orderService(order);
+            await orderService(order, idempotencyKeyRef.current);
 
             // clear cart in state react
             dispatch(
@@ -109,8 +123,10 @@ export default function Checkout() {
 
 
         } catch (error) {
-            let resError = error.response.data.error;
-            setGlobalError(resError.message);
+            let resError = error.response?.data?.error;
+            setGlobalError(resError?.message ?? "Đặt hàng thất bại, vui lòng thử lại");
+        } finally {
+            setSubmitting(false);
         }
 
     }
@@ -245,8 +261,8 @@ export default function Checkout() {
                         <Typography>Tạm tính: ${totalPrice.toFixed(2)}</Typography>
                         <Typography>Phí ship: $10</Typography>
                         <Typography>Tổng cộng: ${grandTotal.toFixed(2)} </Typography>
-                        <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 2 }}>
-                            Đặt hàng
+                        <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 2 }} disabled={submitting}>
+                            {submitting ? "Đang xử lý..." : "Đặt hàng"}
                         </Button>
                     </Paper>
                 </Grid>

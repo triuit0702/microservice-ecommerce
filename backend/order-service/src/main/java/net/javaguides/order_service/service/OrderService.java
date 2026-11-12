@@ -6,7 +6,8 @@ import net.javaguides.order_service.dto.OrderRequestDto;
 import net.javaguides.order_service.entity.Order;
 
 public interface OrderService {
-    OrderDTO placeOrder(OrderRequestDto order, Long userId, String email);
+    OrderDTO placeOrder(OrderRequestDto order, Long userId, String email, String idempotencyKey);
+
     Order getOrderById(String orderId);
     void saveOrder(Order order);
 }

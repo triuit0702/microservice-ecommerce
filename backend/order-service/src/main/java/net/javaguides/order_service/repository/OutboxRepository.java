@@ -10,9 +10,9 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
 import java.util.List;
 
-public interface OutboxRepository extends JpaRepository<OutboxEvent, String> {
+public interface OutboxRepository extends JpaRepository<OutboxEvent, Long> {
 
-    @Query("SELECT e FROM OutboxEvent e WHERE e.status = 0 ORDER BY e.createdAt ASC")
+    @Query("SELECT e FROM OutboxEvent e WHERE e.status = 0 ORDER BY e.createdAt ASC, e.id ASC")
     List<OutboxEvent> findPending(Pageable pageable);
 
     @Modifying

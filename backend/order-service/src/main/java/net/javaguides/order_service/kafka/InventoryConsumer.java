@@ -44,10 +44,12 @@ public class InventoryConsumer {
             return;
         }
         // Map inventory result to order status: RESERVED -> CONFIRMED, otherwise CANCELLED
-        OrderStatus newStatus = InventoryStatus.RESERVED.name().equals(orderMessageEvent.getStatus())
-                ? OrderStatus.CONFIRMED
-                : OrderStatus.CANCELLED;
-        order.setStatus(newStatus.name());
-        LOGGER.info("Order {} status updated to {}", orderMessageEvent.getOrderId(), newStatus);
-        orderService.saveOrder(order);    }
+        if (InventoryStatus.RESERVED.name().equals(orderMessageEvent.getStatus())) {
+            order.confirm();
+        } else {
+            order.cancel();
+        }
+        LOGGER.info("Order {} status updated to {}", orderMessageEvent.getOrderId(), order.getStatus());
+        orderService.saveOrder(order);
+    }
 }

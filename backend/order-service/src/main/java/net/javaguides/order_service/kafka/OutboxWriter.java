@@ -19,7 +19,13 @@ public class OutboxWriter {
     private final ObjectMapper mapper;
 
 
-    public void save(String topic, String aggregateId, Object payload) {
+    /**
+     * Store an event in the outbox, in the caller's transaction. It is published to Kafka later by OutboxPublisherJob.
+     *
+     * @param aggregateId order id, used as the Kafka key
+     * @param payload     event object, serialized to JSON
+     */
+    public void save(String aggregateId, Object payload) {
         try {
             repo.save(OutboxEvent.builder()
                     .aggregateId(aggregateId)
