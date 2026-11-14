@@ -1,17 +1,22 @@
 package net.javaguides.order_service.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import net.javaguides.common_lib.dto.ApiResponse;
 import net.javaguides.common_lib.dto.order.OrderDTO;
 import net.javaguides.order_service.dto.OrderRequestDto;
 import net.javaguides.order_service.exception.OrderException;
 import net.javaguides.order_service.service.OrderService;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -36,17 +41,48 @@ public class OrderController {
      * @return ResponseEntity<ApiResponse<OrderDTO>>: Response with the created (or previously created) order
      */
     @PostMapping
-    public ResponseEntity<ApiResponse<OrderDTO>> placeOrder(@RequestBody OrderRequestDto order,
+    public ResponseEntity<ApiResponse<OrderDTO>> placeOrder(@Valid @RequestBody OrderRequestDto order,
                                                             @RequestHeader(value = USER_ID_HEADER, required = false) Long userId,
                                                             @RequestHeader(value = USER_EMAIL_HEADER, required = false) String email,
                                                             @RequestHeader(value = IDEMPOTENCY_KEY_HEADER, required = false) String idempotencyKey) {
-        if (userId == null) {
-            throw new OrderException("Unauthorized", HttpStatus.UNAUTHORIZED);
-        }
+        requireUser(userId);
         if (idempotencyKey == null || idempotencyKey.isBlank() || idempotencyKey.length() > IDEMPOTENCY_KEY_MAX_LENGTH) {
             throw new OrderException("Missing or invalid " + IDEMPOTENCY_KEY_HEADER + " header", HttpStatus.BAD_REQUEST);
         }
         return new ResponseEntity<>(ApiResponse.success(orderService.placeOrder(order, userId, email, idempotencyKey)),
                 HttpStatus.CREATED);
+    }
+
+    /**
+     * Get one order of the current user (used by the frontend to poll the order status).
+     * @param orderId: order id
+     * @param userId: authenticated user's ID, set by api-gateway
+     * @return the order, or 404 if it does not exist or belongs to another user
+     */
+    @GetMapping("/{orderId}")
+    public ResponseEntity<ApiResponse<OrderDTO>> getMyOrder(@PathVariable String orderId,
+                                                            @RequestHeader(value = USER_ID_HEADER, required = false) Long userId) {
+        requireUser(userId);
+        return ResponseEntity.ok(ApiResponse.success(orderService.getOrderForUser(orderId, userId)));
+    }
+
+    /**
+     * Get orders of the current user, newest first.
+     * @param page: zero-based page index
+     * @param size: page size (max 50)
+     * @param userId: authenticated user's ID, set by api-gateway
+     */
+    @GetMapping
+    public ResponseEntity<ApiResponse<Page<OrderDTO>>> getMyOrders(@RequestParam(defaultValue = "0") int page,
+                                                                   @RequestParam(defaultValue = "10") int size,
+                                                                   @RequestHeader(value = USER_ID_HEADER, required = false) Long userId) {
+        requireUser(userId);
+        return ResponseEntity.ok(ApiResponse.success(orderService.getOrdersForUser(userId, page, size)));
+    }
+
+    private void requireUser(Long userId) {
+        if (userId == null) {
+            throw new OrderException("Unauthorized", HttpStatus.UNAUTHORIZED);
+        }
     }
 }

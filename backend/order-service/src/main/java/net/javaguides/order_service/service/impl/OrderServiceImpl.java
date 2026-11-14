@@ -14,6 +14,7 @@ import net.javaguides.order_service.dto.product_variant.ProductVariantResponseDt
 import net.javaguides.order_service.entity.Order;
 import net.javaguides.order_service.entity.ShippingInfo;
 import net.javaguides.order_service.exception.OrderException;
+import net.javaguides.order_service.exception.PriceChangedException;
 import net.javaguides.order_service.kafka.OrderProducer;
 import net.javaguides.order_service.kafka.OutboxWriter;
 import net.javaguides.order_service.repository.OrderRepository;
@@ -23,13 +24,22 @@ import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.PessimisticLockingFailureException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -42,6 +52,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class OrderServiceImpl implements OrderService {
     private static final Logger LOGGER = LoggerFactory.getLogger(OrderServiceImpl.class);
+    private static final int MAX_PAGE_SIZE = 50;
+    // Input limits: keep quantities far from int overflow and the by-ids query URL short
+    private static final int MAX_ORDER_ITEMS = 50;
+    private static final int MAX_QUANTITY_PER_ITEM = 100;
+    private static final String SHIPPING_FEE_KEY = "shippingFee";
 
     private final OrderProducer orderProducer;
     private final OrderRepository orderRepository;
@@ -49,8 +64,10 @@ public class OrderServiceImpl implements OrderService {
     private final ProductAPIClient productAPIClient;
 
     private final OutboxWriter outboxWriter;
+    // Programmatic transactions: placeOrder must not hold a DB connection during the Feign call
+    private final TransactionTemplate transactionTemplate;
 
-    // Decided by the server, never taken from the request (frontend shows the same value)
+    // Decided by the server; the value sent by the client is only compared against it
     @Value("${order.shipping-fee:10}")
     private BigDecimal shippingFee;
 
@@ -74,7 +91,9 @@ public class OrderServiceImpl implements OrderService {
 //    }
 
     /**
-     * place order version 2: using outbox pattern to send event after transaction commit
+     * place order version 2: using outbox pattern to send event after transaction commit.
+     * Not @Transactional on purpose: validation calls product-service (Feign) without holding a DB
+     * connection, and only the insert of the order + outbox event runs in a short transaction.
      *
      * @param orderRequestDto The order request DTO containing order details.
      * @param userId          The ID of the user placing the order.
@@ -83,35 +102,67 @@ public class OrderServiceImpl implements OrderService {
      * @return The created (or previously created) OrderDTO.
      */
     @Override
-    @Transactional
     public OrderDTO placeOrder(OrderRequestDto orderRequestDto, Long userId, String email, String idempotencyKey) {
-        // Fast path: same key already used (double click / retry after success) -> return the existing order
-        Optional<Order> existingOrder = orderRepository.findByUserIdAndIdempotencyKey(userId, idempotencyKey);
+        // 1. Fast path: same key already used (double click / retry after success) -> return the existing order
+        Optional<OrderDTO> existingOrder = findOrderByIdempotencyKey(userId, idempotencyKey);
         if (existingOrder.isPresent()) {
             LOGGER.info("Duplicate order request for user {} with idempotency key {}, returning order {}",
                     userId, idempotencyKey, existingOrder.get().getOrderId());
-            return modelMapper.map(existingOrder.get(), OrderDTO.class);
+            return existingOrder.get();
         }
 
         try {
-            List<ValidatedItem> items = validateStockAndPrice(orderRequestDto.getOrderItems());
+            // 2. Validation against product-service, outside any transaction
+            List<ValidatedItem> items = validateStockAndPrice(orderRequestDto);
 
-            Order order = buildOrder(orderRequestDto, items, userId, idempotencyKey);
-            // Flush now so a duplicate idempotency key fails here (before the outbox event is written)
-            Order createdOrder = orderRepository.saveAndFlush(order);
-           // sendOrderEvent(createdOrder, orderRequestDto.getPaymentMethod(), email);
-            OrderMessageEvent orderMessageEvent = createOrderMessageEvent(createdOrder, orderRequestDto.getPaymentMethod(), email);
-
-            // ghi event vào outbox, cùng transaction với đơn hàng
-            outboxWriter.save(createdOrder.getOrderId(), orderMessageEvent);
-
-            return modelMapper.map(createdOrder, OrderDTO.class);
+            // 3. Short transaction: order and outbox event are committed together
+            return transactionTemplate.execute(status ->
+                    createOrder(orderRequestDto, items, userId, email, idempotencyKey));
         } catch (OrderException e) {
             throw e;
+        } catch (DataIntegrityViolationException e) {
+            // 4. A concurrent request with the same key committed first (InnoDB makes this insert wait
+            //    for it), so the order is visible to a new transaction. Not found -> another integrity error.
+            return findOrderByIdempotencyKey(userId, idempotencyKey)
+                    .map(order -> {
+                        LOGGER.info("Concurrent order request for user {} with idempotency key {}, returning order {}",
+                                userId, idempotencyKey, order.getOrderId());
+                        return order;
+                    })
+                    .orElseThrow(() -> {
+                        LOGGER.error("Failed to create order: {}", e.getMessage(), e);
+                        return new OrderException("Failed to create order", HttpStatus.INTERNAL_SERVER_ERROR);
+                    });
+        } catch (PessimisticLockingFailureException e) {
+            // Lock wait timeout / deadlock with a concurrent insert: retrying with the same key is safe
+            LOGGER.warn("Lock conflict while creating order for user {} with idempotency key {}: {}",
+                    userId, idempotencyKey, e.getMessage());
+            throw new OrderException("Your order is being processed, please try again",
+                    HttpStatus.CONFLICT, OrderException.CODE_ORDER_IN_PROGRESS);
         } catch (Exception e) {
             LOGGER.error("Failed to create order: {}", e.getMessage(), e);
-            throw new OrderException("Failed to create order ", HttpStatus.INTERNAL_SERVER_ERROR);
+            throw new OrderException("Failed to create order", HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    /** Runs inside the transaction of placeOrder step 3. */
+    private OrderDTO createOrder(OrderRequestDto req, List<ValidatedItem> items, Long userId,
+                                 String email, String idempotencyKey) {
+        Order order = buildOrder(req, items, userId, idempotencyKey);
+        // Flush now so a duplicate idempotency key fails here (before the outbox event is written)
+        Order createdOrder = orderRepository.saveAndFlush(order);
+        OrderMessageEvent orderMessageEvent = createOrderMessageEvent(createdOrder, req.getPaymentMethod(), email);
+
+        // ghi event vào outbox, cùng transaction với đơn hàng
+        outboxWriter.save(createdOrder.getOrderId(), orderMessageEvent);
+
+        return toOrderDTO(createdOrder);
+    }
+
+    /** Reads the order of this checkout attempt in its own transaction (fresh snapshot, lazy items loaded). */
+    private Optional<OrderDTO> findOrderByIdempotencyKey(Long userId, String idempotencyKey) {
+        return transactionTemplate.execute(status ->
+                orderRepository.findByUserIdAndIdempotencyKey(userId, idempotencyKey).map(this::toOrderDTO));
     }
 
     private OrderMessageEvent createOrderMessageEvent(Order createdOrder, String paymentMethod, String email) {
@@ -128,6 +179,51 @@ public class OrderServiceImpl implements OrderService {
         orderMessageEvent.setOrderItems(orderItems);
 
         return orderMessageEvent;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public OrderDTO getOrderForUser(String orderId, Long userId) {
+        return orderRepository.findById(orderId)
+                // 404 instead of 403 so ids of other users' orders are not revealed
+                .filter(order -> Objects.equals(order.getUserId(), userId))
+                .map(this::toOrderDTO)
+                .orElseThrow(() -> new OrderException("Order not found", HttpStatus.NOT_FOUND));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<OrderDTO> getOrdersForUser(Long userId, int page, int size) {
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        PageRequest pageable = PageRequest.of(Math.max(page, 0), safeSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+        return orderRepository.findByUserId(userId, pageable).map(this::toOrderDTO);
+    }
+
+    /** Explicit mapping: shipping info is embedded in the entity but flat in the DTO. */
+    private OrderDTO toOrderDTO(Order order) {
+        OrderDTO dto = new OrderDTO();
+        dto.setOrderId(order.getOrderId());
+        dto.setStatus(order.getStatus());
+        dto.setUserId(order.getUserId());
+        dto.setCreatedAt(order.getCreatedAt());
+        dto.setUpdatedAt(order.getUpdatedAt());
+        dto.setVersion(order.getVersion());
+        dto.setSubTotal(order.getSubTotal());
+        dto.setShippingFee(order.getShippingFee());
+        dto.setTotalPrice(order.getTotalPrice());
+        dto.setPaymentMethod(order.getPaymentMethod());
+        dto.setCancelReason(order.getCancelReason());
+        ShippingInfo shippingInfo = order.getShippingInfo();
+        if (shippingInfo != null) {
+            dto.setAddress(shippingInfo.getAddress());
+            dto.setPhone(shippingInfo.getPhone());
+            dto.setReceiverName(shippingInfo.getReceiverName());
+            dto.setEmail(shippingInfo.getEmail());
+        }
+        dto.setOrderItems(order.getOrderItems().stream()
+                .map(item -> modelMapper.map(item, OrderItemDTO.class))
+                .collect(Collectors.toList()));
+        return dto;
     }
 
     /**
@@ -148,11 +244,12 @@ public class OrderServiceImpl implements OrderService {
 
     /**
      * Build the order entity from the request and the validated items. Client-supplied
-     * orderId/status/totals/prices are ignored; totals are computed by the entity.
+     * orderId/status/totals are ignored; prices are the server prices (already checked
+     * to equal the client prices) and totals are computed by the entity.
      */
     private Order buildOrder(OrderRequestDto req, List<ValidatedItem> items, Long userId, String idempotencyKey) {
         ShippingInfo shippingInfo = new ShippingInfo(req.getAddress(), req.getPhone(), req.getReceiverName(), req.getEmail());
-        Order order = Order.create(userId, idempotencyKey, shippingInfo, shippingFee);
+        Order order = Order.create(userId, idempotencyKey, shippingInfo, shippingFee, req.getPaymentMethod());
         items.forEach(i -> order.addItem(i.productId(), i.variantId(), i.quantity(), i.unitPrice(), i.color()));
         return order;
     }
@@ -165,11 +262,12 @@ public class OrderServiceImpl implements OrderService {
      * Validates order items against product-service and returns them with server-side prices.
      * Stock check is fail-fast only; the real reservation happens later in product-service.
      */
-    private List<ValidatedItem> validateStockAndPrice(List<OrderItemDTO> items) {
+    private List<ValidatedItem> validateStockAndPrice(OrderRequestDto req) {
+        List<OrderItemDTO> items = req.getOrderItems();
         validateItems(items);                                               // 1. input is well-formed
         Map<String, ProductResponseDto> productsById = loadProducts(items); // 2. all products exist
         checkStock(items, productsById);                                    // 3. enough stock per variant
-        return applyServerPrices(items, productsById);                      // 4. never trust client price
+        return checkPrices(req, productsById);                              // 4. client price must match server price
     }
 
     private Map<String, ProductResponseDto> loadProducts(List<OrderItemDTO> items) {
@@ -192,7 +290,8 @@ public class OrderServiceImpl implements OrderService {
         for (OrderItemDTO item : items) {
             ProductResponseDto product = productsById.get(item.getProductId());
             ProductVariantResponseDto variant = resolveVariant(product, item.getVariantId());
-            int requested = requestedPerVariant.merge(variant.getId(), item.getQuantity(), Integer::sum);
+            // addExact: never wraps to a negative value that would pass the stock check
+            int requested = requestedPerVariant.merge(variant.getId(), item.getQuantity(), Math::addExact);
             int available = Objects.requireNonNullElse(variant.getStockQuantity(), 0);
             if (available < requested) {
                 LOGGER.info("Insufficient stock for variantId {}: requested {}, available {}",
@@ -202,16 +301,41 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-    private List<ValidatedItem> applyServerPrices(List<OrderItemDTO> items,
-                                                  Map<String, ProductResponseDto> productsById) {
-        return items.stream()
-                .map(item -> {
-                    ProductResponseDto product = productsById.get(item.getProductId());
-                    ProductVariantResponseDto variant = resolveVariant(product, item.getVariantId());
-                    return new ValidatedItem(item.getProductId(), item.getVariantId(), item.getQuantity(),
-                            priceOf(product, variant), item.getColor());
-                })
-                .toList();
+    /**
+     * Compares the prices the customer saw with the server prices. Any difference (or a missing
+     * client price) rejects the order with 409 so the customer can review the new prices;
+     * an order is never charged with a client price.
+     */
+    private List<ValidatedItem> checkPrices(OrderRequestDto req, Map<String, ProductResponseDto> productsById) {
+        List<ValidatedItem> validated = new ArrayList<>();
+        Map<String, String> changedPrices = new LinkedHashMap<>();
+        Set<String> changedNames = new LinkedHashSet<>();
+
+        for (OrderItemDTO item : req.getOrderItems()) {
+            ProductResponseDto product = productsById.get(item.getProductId());
+            ProductVariantResponseDto variant = resolveVariant(product, item.getVariantId());
+            BigDecimal serverPrice = priceOf(product, variant);
+            if (item.getPrice() == null || item.getPrice().compareTo(serverPrice) != 0) {
+                LOGGER.info("Price changed for variantId {}: client {}, server {}",
+                        variant.getId(), item.getPrice(), serverPrice);
+                changedPrices.put(item.getProductId() + ":" + item.getVariantId(), serverPrice.toPlainString());
+                changedNames.add(product.getName());
+            }
+            validated.add(new ValidatedItem(item.getProductId(), item.getVariantId(), item.getQuantity(),
+                    serverPrice, item.getColor()));
+        }
+
+        if (req.getShippingFee() != null && req.getShippingFee().compareTo(shippingFee) != 0) {
+            changedPrices.put(SHIPPING_FEE_KEY, shippingFee.toPlainString());
+        }
+
+        if (!changedPrices.isEmpty()) {
+            String message = changedNames.isEmpty()
+                    ? "Shipping fee has changed, please review your order"
+                    : "Price has changed for " + String.join(", ", changedNames) + ", please review your order";
+            throw new PriceChangedException(message, changedPrices);
+        }
+        return validated;
     }
 
     /** Variant price if set, otherwise the product price. */
@@ -227,12 +351,18 @@ public class OrderServiceImpl implements OrderService {
         if (orderItems == null || orderItems.isEmpty()) {
             throw new OrderException("Order must contain at least one item", HttpStatus.BAD_REQUEST);
         }
+        if (orderItems.size() > MAX_ORDER_ITEMS) {
+            throw new OrderException("Order can contain at most " + MAX_ORDER_ITEMS + " items", HttpStatus.BAD_REQUEST);
+        }
         for (OrderItemDTO item : orderItems) {
-            if (item == null || item.getProductId() == null) {
+            if (item == null || item.getProductId() == null || item.getProductId().isBlank()) {
                 throw new OrderException("Order item must have a productId", HttpStatus.BAD_REQUEST);
             }
             if (item.getQuantity() == null || item.getQuantity() <= 0) {
                 throw new OrderException("Item quantity must be greater than 0", HttpStatus.BAD_REQUEST);
+            }
+            if (item.getQuantity() > MAX_QUANTITY_PER_ITEM) {
+                throw new OrderException("Item quantity must be at most " + MAX_QUANTITY_PER_ITEM, HttpStatus.BAD_REQUEST);
             }
         }
     }

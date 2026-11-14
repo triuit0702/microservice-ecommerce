@@ -9,6 +9,7 @@ import { addListToCart, clearCart } from "../features/cartSlice";
 
 import { Menu, MenuItem, Avatar } from "@mui/material";
 import LogoutIcon from "@mui/icons-material/Logout";
+import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import { serviceLogout } from "../services/AuthService";
 import { Login } from "@mui/icons-material";
 
@@ -147,6 +148,10 @@ export default function Navbar() {
                                     </MenuItem>
                                     <MenuItem onClick={() => navigate("/profile")}>
                                         Profile
+                                    </MenuItem>
+                                    <MenuItem onClick={() => { handleCloseMenu(); navigate("/orders"); }}>
+                                        <ReceiptLongIcon sx={{ mr: 1 }} />
+                                        Đơn hàng của tôi
                                     </MenuItem>
 
 

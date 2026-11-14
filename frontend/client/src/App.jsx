@@ -3,7 +3,6 @@ import { Container } from "@mui/material";
 import Navbar from "./components/Navbar";
 
 import React from "react";
-import OrderSuccess from "./pages/OrderSuccess";
 import ProtectedRoute from "./pages/ProtectedRoute";
 
 
@@ -12,6 +11,8 @@ const ProductDetail = React.lazy(() => import("./pages/ProductDetail"));
 const CartPage = React.lazy(() => import("./pages/CartPage"));
 const Login = React.lazy(() => import("./pages/Login"))
 const Checkout = React.lazy(() => import("./pages/Checkout"))
+const OrderDetail = React.lazy(() => import("./pages/OrderDetail"))
+const MyOrders = React.lazy(() => import("./pages/MyOrders"))
 
 function App() {
   const location = useLocation();
@@ -47,7 +48,9 @@ function App() {
             <Route path="/cart" element={<CartPage />} />
             <Route path="/checkout" element={<Checkout />} />
 
-            <Route path="/order-success" element={<OrderSuccess />} />
+            {/* Order status is async (PENDING -> CONFIRMED / CANCELLED): detail page polls it */}
+            <Route path="/orders" element={<MyOrders />} />
+            <Route path="/orders/:id" element={<OrderDetail />} />
           </Route>
 
 

@@ -51,10 +51,16 @@ public class Order extends AbstractEntity {
     @Embedded
     private ShippingInfo shippingInfo;
 
+    private String paymentMethod;
+
+    /** Set when the order is cancelled, shown to the customer. */
+    private String cancelReason;
+
     /**
      * Create a new PENDING order without items.
      */
-    public static Order create(Long userId, String idempotencyKey, ShippingInfo shippingInfo, BigDecimal shippingFee) {
+    public static Order create(Long userId, String idempotencyKey, ShippingInfo shippingInfo,
+                               BigDecimal shippingFee, String paymentMethod) {
         Order order = new Order();
         order.orderId = UUID.randomUUID().toString();
         order.status = OrderStatus.PENDING.name();
@@ -62,6 +68,7 @@ public class Order extends AbstractEntity {
         order.idempotencyKey = idempotencyKey;
         order.shippingInfo = shippingInfo;
         order.shippingFee = shippingFee;
+        order.paymentMethod = paymentMethod;
         order.recalculateTotals();
         return order;
     }
@@ -80,8 +87,9 @@ public class Order extends AbstractEntity {
     }
 
     /** Inventory could not be reserved. */
-    public void cancel() {
+    public void cancel(String reason) {
         this.status = OrderStatus.CANCELLED.name();
+        this.cancelReason = reason;
     }
 
     private void recalculateTotals() {

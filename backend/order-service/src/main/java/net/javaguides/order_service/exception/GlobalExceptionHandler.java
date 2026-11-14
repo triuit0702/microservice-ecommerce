@@ -6,9 +6,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /** Maps exceptions from order-service controllers to ApiResponse errors. */
 @Slf4j
@@ -17,7 +22,22 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(OrderException.class)
     public ResponseEntity<ApiResponse<?>> handleOrderException(OrderException e) {
-        return new ResponseEntity<>(ApiResponse.error(e.getMessage()), e.getStatus());
+        Map<String, String> details = e instanceof PriceChangedException priceChanged ? priceChanged.getDetails() : null;
+        ApiResponse<?> body = ApiResponse.error(e.getMessage(), details);
+        body.getError().setCode(e.getCode());
+        return new ResponseEntity<>(body, e.getStatus());
+    }
+
+    /** @Valid request body errors: details map field -> message (first error per field). */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<?>> handleValidation(MethodArgumentNotValidException e) {
+        Map<String, String> fieldErrors = new LinkedHashMap<>();
+        for (FieldError error : e.getBindingResult().getFieldErrors()) {
+            fieldErrors.putIfAbsent(error.getField(), error.getDefaultMessage());
+        }
+        ApiResponse<?> body = ApiResponse.error("Invalid order information", fieldErrors);
+        body.getError().setCode(OrderException.CODE_VALIDATION_FAILED);
+        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)

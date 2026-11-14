@@ -3,6 +3,7 @@ package net.javaguides.product_service.service;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import net.javaguides.common_lib.dto.order.OrderItemDTO;
 import net.javaguides.product_service.dto.cart.AddCartRequestDto;
 import net.javaguides.product_service.dto.cart.CartItemDto;
 import net.javaguides.product_service.dto.cart.CartResponseDto;
@@ -254,6 +255,23 @@ public class CartService {
         //excute script
         Long result = redisTemplate.execute(redisScript, keys, args);
         return result.intValue();
+    }
+
+    /**
+     * Remove the ordered items (field productId:variantId) from the user's cart.
+     * Idempotent: removing an item that is no longer in the cart does nothing.
+     * @param userId owner of the cart
+     * @param orderItems items of the reserved order
+     */
+    public void removeOrderedItems(Long userId, List<OrderItemDTO> orderItems) {
+        if (userId == null || orderItems == null || orderItems.isEmpty()) {
+            return;
+        }
+        Object[] fields = orderItems.stream()
+                .map(item -> item.getProductId() + ":" + item.getVariantId())
+                .distinct()
+                .toArray();
+        redisTemplate.opsForHash().delete(buildKey(userId), fields);
     }
 
     /**

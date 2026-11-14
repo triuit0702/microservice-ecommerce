@@ -20,6 +20,7 @@ import java.util.Objects;
 public class InventoryConsumer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InventoryConsumer.class);
+    private static final String DEFAULT_CANCEL_REASON = "Some items are out of stock";
     private final OrderService orderService;
 
     /**
@@ -31,25 +32,35 @@ public class InventoryConsumer {
     @KafkaListener(topics = "${spring.kafka.update-order-topic.name}", groupId = "${spring.kafka.consumer.group-id}")
     @Transactional
     public void consume(OrderMessageEvent orderMessageEvent) {
-        // Handle the consumed message
-        LOGGER.info("Received message from update-order-topic");
-        Order order = orderService.getOrderById(orderMessageEvent.getOrderId());
+        String orderId = orderMessageEvent.getOrderId();
+        String result = orderMessageEvent.getStatus();
+        LOGGER.info("Received inventory result {} for order {}", result, orderId);
+
+        // Only the two known results change an order; anything else (null, typo, new value) is ignored
+        boolean reserved = InventoryStatus.RESERVED.name().equals(result);
+        boolean cancelled = InventoryStatus.CANCEL.name().equals(result);
+        if (orderId == null || (!reserved && !cancelled)) {
+            LOGGER.warn("Skip invalid inventory result: orderId={}, status={}", orderId, result);
+            return;
+        }
+
+        Order order = orderService.getOrderById(orderId);
         if (Objects.isNull(order)) {
+            LOGGER.warn("Order {} not found, skip inventory result {}", orderId, result);
             return;
         }
         // Idempotent: only a PENDING order can be updated; duplicated or late messages are ignored
         if (!OrderStatus.PENDING.name().equals(order.getStatus())) {
-            LOGGER.info("Order {} already {}, skip inventory result {}",
-                    orderMessageEvent.getOrderId(), order.getStatus(), orderMessageEvent.getStatus());
+            LOGGER.info("Order {} already {}, skip inventory result {}", orderId, order.getStatus(), result);
             return;
         }
-        // Map inventory result to order status: RESERVED -> CONFIRMED, otherwise CANCELLED
-        if (InventoryStatus.RESERVED.name().equals(orderMessageEvent.getStatus())) {
+        if (reserved) {
             order.confirm();
         } else {
-            order.cancel();
+            String reason = orderMessageEvent.getReason();
+            order.cancel(reason == null || reason.isBlank() ? DEFAULT_CANCEL_REASON : reason);
         }
-        LOGGER.info("Order {} status updated to {}", orderMessageEvent.getOrderId(), order.getStatus());
+        LOGGER.info("Order {} status updated to {}", orderId, order.getStatus());
         orderService.saveOrder(order);
     }
 }

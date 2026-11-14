@@ -9,3 +9,9 @@ export const orderService = (data, idempotencyKey) => axiosClient.post(API_URL, 
         'Idempotency-Key': idempotencyKey
     }
 });
+
+// Order of the current user (404 if it belongs to another user)
+export const getOrderByIdService = (orderId) => axiosClient.get(`${API_URL}/${orderId}`);
+
+// Orders of the current user, newest first. params: { page (0-based), size }
+export const getMyOrdersService = (params) => axiosClient.get(API_URL, { params });

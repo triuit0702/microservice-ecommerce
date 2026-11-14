@@ -13,4 +13,7 @@ public class OrderMessageEvent {
 
     private String paymentMethod;
     private String email;
+
+    /** Reason of an inventory CANCEL result, shown to the customer. */
+    private String reason;
 }
