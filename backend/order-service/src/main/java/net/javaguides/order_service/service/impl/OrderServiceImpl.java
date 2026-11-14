@@ -7,6 +7,7 @@ import net.javaguides.common_lib.dto.ApiResponse;
 import net.javaguides.common_lib.dto.order.OrderDTO;
 import net.javaguides.common_lib.dto.order.OrderItemDTO;
 import net.javaguides.common_lib.dto.order.OrderMessageEvent;
+import net.javaguides.common_lib.enums.OrderEventType;
 import net.javaguides.common_lib.enums.OrderStatus;
 import net.javaguides.order_service.dto.OrderRequestDto;
 import net.javaguides.order_service.dto.product.ProductResponseDto;
@@ -36,6 +37,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -167,18 +169,55 @@ public class OrderServiceImpl implements OrderService {
 
     private OrderMessageEvent createOrderMessageEvent(Order createdOrder, String paymentMethod, String email) {
         OrderMessageEvent orderMessageEvent = new OrderMessageEvent();
+        orderMessageEvent.setEventType(OrderEventType.CREATE_ORDER.name());
         orderMessageEvent.setOrderId(createdOrder.getOrderId());
         orderMessageEvent.setStatus(OrderStatus.PENDING.name());
         orderMessageEvent.setPaymentMethod(paymentMethod);
         orderMessageEvent.setEmail(email);
         orderMessageEvent.setUserId(createdOrder.getUserId());
-
-        List<OrderItemDTO> orderItems = createdOrder.getOrderItems().stream()
-                .map(item -> modelMapper.map(item, OrderItemDTO.class))
-                .collect(Collectors.toList());
-        orderMessageEvent.setOrderItems(orderItems);
+        orderMessageEvent.setOrderItems(toOrderItemDTOs(createdOrder));
 
         return orderMessageEvent;
+    }
+
+    private List<OrderItemDTO> toOrderItemDTOs(Order order) {
+        return order.getOrderItems().stream()
+                .map(item -> modelMapper.map(item, OrderItemDTO.class))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public boolean cancelExpiredOrder(String orderId, String reason) {
+        Order order = orderRepository.findById(orderId).orElse(null);
+        // Re-checked inside the transaction: the inventory result may have arrived since the order was selected
+        if (order == null || !OrderStatus.PENDING.name().equals(order.getStatus())) {
+            return false;
+        }
+        order.cancel(reason);
+        // Stock may already be reserved (result late or stuck in the DLT): ask product-service to give it back.
+        // If nothing was reserved, product-service ignores it.
+        requestStockRelease(order);
+        LOGGER.info("Order {} cancelled: still PENDING after timeout", orderId);
+        return true;
+    }
+
+    @Override
+    public void requestStockRelease(Order order) {
+        OrderMessageEvent event = new OrderMessageEvent();
+        event.setEventType(OrderEventType.RELEASE_STOCK.name());
+        event.setOrderId(order.getOrderId());
+        event.setUserId(order.getUserId());
+        event.setOrderItems(toOrderItemDTOs(order));
+        // Same key (orderId) and topic as the create event, so product-service handles it after the reservation
+        outboxWriter.save(order.getOrderId(), event);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<String> findExpiredPendingOrderIds(Date createdBefore, int limit) {
+        return orderRepository.findIdsByStatusCreatedBefore(OrderStatus.PENDING.name(), createdBefore,
+                PageRequest.of(0, limit));
     }
 
     @Override

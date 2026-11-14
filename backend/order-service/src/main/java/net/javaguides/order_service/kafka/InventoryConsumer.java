@@ -49,6 +49,12 @@ public class InventoryConsumer {
             LOGGER.warn("Order {} not found, skip inventory result {}", orderId, result);
             return;
         }
+        // Stock was reserved after the order had already been cancelled (e.g. by the timeout job): give it back
+        if (reserved && OrderStatus.CANCELLED.name().equals(order.getStatus())) {
+            LOGGER.warn("Order {} already CANCELLED but stock was reserved, requesting stock release", orderId);
+            orderService.requestStockRelease(order);
+            return;
+        }
         // Idempotent: only a PENDING order can be updated; duplicated or late messages are ignored
         if (!OrderStatus.PENDING.name().equals(order.getStatus())) {
             LOGGER.info("Order {} already {}, skip inventory result {}", orderId, order.getStatus(), result);

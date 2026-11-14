@@ -11,4 +11,15 @@ public interface ProcessedOrderRepository extends JpaRepository<ProcessedOrder, 
     @Modifying
     @Query("UPDATE ProcessedOrder p SET p.published = true WHERE p.orderId = :orderId")
     int markPublished(@Param("orderId") String orderId);
+
+    /**
+     * Switch RESERVED to RELEASED. The status check in the WHERE clause makes a release happen at most once.
+     * @return 1 if the order was RESERVED, 0 otherwise (never reserved, cancelled or already released)
+     */
+    @Modifying
+    @Query("""
+    UPDATE ProcessedOrder p SET p.status = net.javaguides.common_lib.enums.InventoryStatus.RELEASED
+    WHERE p.orderId = :orderId AND p.status = net.javaguides.common_lib.enums.InventoryStatus.RESERVED
+    """)
+    int markReleased(@Param("orderId") String orderId);
 }

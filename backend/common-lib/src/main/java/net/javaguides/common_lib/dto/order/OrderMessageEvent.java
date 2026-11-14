@@ -6,6 +6,9 @@ import java.util.List;
 
 @Data
 public class OrderMessageEvent {
+    /** {@link net.javaguides.common_lib.enums.OrderEventType} name; null is treated as CREATE_ORDER (older events). */
+    private String eventType;
+
     private String orderId;
     private String status;
     private List<OrderItemDTO> orderItems;

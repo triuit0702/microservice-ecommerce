@@ -36,6 +36,14 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
     """)
     int decreaseStock(@Param("variantId") Long variantId, @Param("quantity") int quantity);
 
+    /**
+     * Atomically give stock back (release of a cancelled order).
+     * @return number of updated rows (0 = variant not found)
+     */
+    @Modifying
+    @Query("UPDATE ProductVariant v SET v.stockQuantity = v.stockQuantity + :quantity WHERE v.id = :variantId")
+    int increaseStock(@Param("variantId") Long variantId, @Param("quantity") int quantity);
+
     // get cart item
     @Query("""
     SELECT

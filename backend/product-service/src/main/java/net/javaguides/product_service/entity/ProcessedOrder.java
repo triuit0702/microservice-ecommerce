@@ -26,7 +26,7 @@ public class ProcessedOrder implements Persistable<String> {
     @Column(name = "order_id", nullable = false, updatable = false)
     private String orderId;
 
-    /** Reservation result sent back to order-service. */
+    /** Reservation result sent back to order-service; RELEASED once the stock was given back. */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private InventoryStatus status;

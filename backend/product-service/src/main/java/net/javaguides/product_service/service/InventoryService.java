@@ -32,4 +32,10 @@ public interface InventoryService {
      * Mark the order result as sent to order-service.
      */
     void markPublished(String orderId);
+
+    /**
+     * Give back the stock of a cancelled order, only if it was reserved and not released yet (idempotent).
+     * @return true if stock was given back, false if there was nothing to release
+     */
+    boolean releaseStock(String orderId, List<OrderItemDTO> orderItems);
 }

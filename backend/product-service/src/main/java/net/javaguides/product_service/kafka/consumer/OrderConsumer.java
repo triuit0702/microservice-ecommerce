@@ -3,6 +3,7 @@ package net.javaguides.product_service.kafka.consumer;
 import lombok.RequiredArgsConstructor;
 import net.javaguides.common_lib.dto.order.OrderMessageEvent;
 import net.javaguides.common_lib.enums.InventoryStatus;
+import net.javaguides.common_lib.enums.OrderEventType;
 import net.javaguides.product_service.entity.ProcessedOrder;
 import net.javaguides.product_service.exception.InsufficientStockException;
 import net.javaguides.product_service.exception.ProductException;
@@ -44,6 +45,12 @@ public class OrderConsumer {
         String orderId = orderEvent.getOrderId();
         if (orderId == null) {
             LOGGER.error("Skip OrderEvent without orderId: {}", orderEvent);
+            return;
+        }
+
+        // Order cancelled in order-service: give the stock back if it was reserved. No reply is sent.
+        if (OrderEventType.RELEASE_STOCK.name().equals(orderEvent.getEventType())) {
+            inventoryService.releaseStock(orderId, orderEvent.getOrderItems());
             return;
         }
 

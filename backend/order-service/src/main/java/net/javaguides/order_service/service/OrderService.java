@@ -6,6 +6,9 @@ import net.javaguides.order_service.dto.OrderRequestDto;
 import net.javaguides.order_service.entity.Order;
 import org.springframework.data.domain.Page;
 
+import java.util.Date;
+import java.util.List;
+
 public interface OrderService {
     OrderDTO placeOrder(OrderRequestDto order, Long userId, String email, String idempotencyKey);
 
@@ -17,4 +20,19 @@ public interface OrderService {
 
     Order getOrderById(String orderId);
     void saveOrder(Order order);
+
+    /** Ids of orders still PENDING that were created before the given time, oldest first. */
+    List<String> findExpiredPendingOrderIds(Date createdBefore, int limit);
+
+    /**
+     * Cancel the order if it is still PENDING and request a stock release, in one transaction.
+     * @return true if the order was cancelled, false if it is no longer PENDING (or does not exist)
+     */
+    boolean cancelExpiredOrder(String orderId, String reason);
+
+    /**
+     * Write a RELEASE_STOCK event to the outbox, in the caller's transaction.
+     * product-service gives the stock back only if it was reserved for this order, so it is safe to call more than once.
+     */
+    void requestStockRelease(Order order);
 }

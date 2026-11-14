@@ -67,6 +67,24 @@ public class InventoryServiceImpl implements InventoryService {
         processedOrderRepository.markPublished(orderId);
     }
 
+    @Override
+    @Transactional
+    public boolean releaseStock(String orderId, List<OrderItemDTO> orderItems) {
+        // Status update first: a duplicate or concurrent release gets 0 rows and stops here
+        if (processedOrderRepository.markReleased(orderId) == 0) {
+            LOGGER.info("Order {}: no reserved stock to release", orderId);
+            return false;
+        }
+        for (Map.Entry<Long, Integer> entry : mergeQuantities(orderItems).entrySet()) {
+            if (productVariantRepository.increaseStock(entry.getKey(), entry.getValue()) == 0) {
+                // Variant deleted since the reservation: nothing to give back for it
+                LOGGER.warn("Order {}: variant {} not found, stock {} not released", orderId, entry.getKey(), entry.getValue());
+            }
+        }
+        LOGGER.info("Order {}: reserved stock released", orderId);
+        return true;
+    }
+
     /**
      * Validate items and sum quantities of duplicated variants.
      */

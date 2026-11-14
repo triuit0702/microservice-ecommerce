@@ -86,7 +86,7 @@ public class Order extends AbstractEntity {
         this.status = OrderStatus.CONFIRMED.name();
     }
 
-    /** Inventory could not be reserved. */
+    /** Inventory could not be reserved, or no inventory result arrived in time. */
     public void cancel(String reason) {
         this.status = OrderStatus.CANCELLED.name();
         this.cancelReason = reason;
