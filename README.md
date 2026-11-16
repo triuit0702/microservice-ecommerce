@@ -33,54 +33,35 @@ React clients ──HTTP──► api-gateway :9191 ──┬──► identity-
 
 ### Place order flow (Saga with Kafka)
 
-Each service owns its database, so placing an order cannot use one shared transaction.
-It is a **choreography saga**: the work is split into local transactions in each service,
-linked by Kafka events, with no central coordinator.
+Each service owns its database, so placing an order is a **choreography saga**: local transactions in each service,
+linked by Kafka events through a **transactional outbox**, with no central coordinator.
 
-| Step | Service         | Local transaction                          | Result                                |
-| ---- | --------------- | ------------------------------------------ | ------------------------------------- |
-| T1   | order-service   | Save order `PENDING` + outbox event        | Event to `create_order_topic`         |
-| T2   | product-service | Decrease stock + record `processed_orders` | `RESERVED`, or rolled back → `CANCEL` |
-| T3   | order-service   | `PENDING` → `CONFIRMED` / `CANCELLED`      | End                                   |
-
-**Compensation:** if T2 fails (out of stock), T1 is already committed and cannot be rolled back,
-so order-service compensates by setting the order to `CANCELLED`.
-
-Two topics are used, one per direction:
-
-| Topic (config key)                     | Name                 | Producer → Consumer             | Payload                                                       |
-| -------------------------------------- | -------------------- | ------------------------------- | ------------------------------------------------------------- |
-| `spring.kafka.create-order-topic.name` | `create_order_topic` | order-service → product-service | `OrderMessageEvent` (orderId, items, userId, email…)          |
-| `spring.kafka.update-order-topic.name` | `update_order_topic` | product-service → order-service | `OrderMessageEvent` (orderId, status = `RESERVED` / `CANCEL`) |
-
-#### Sequence
+| Step | Service         | Local transaction                                            | Result                                |
+| ---- | --------------- | ------------------------------------------------------------ | ------------------------------------- |
+| T1   | order-service   | Save order `PENDING` + outbox event `CREATE_ORDER`           | Event to `inventory.command`          |
+| T2   | product-service | Insert `processed_orders` + decrease stock (one transaction) | `RESERVED`, or rolled back → `CANCEL` |
+| T3   | order-service   | `PENDING` → `CONFIRMED` / `CANCELLED`                        | Frontend polls the order              |
 
 ```
-Client ──POST /api/v1/order──► order-service / OrderController
-                                  │ 1. Feign → product-service: pre-check stock and price 
-                                  │ 2. One DB transaction (T1):
-                                  │      - save Order (PENDING)
-                                  │      - save OutboxEvent (NEW)
-                                  ▼
-◄── 3. 201 Created (order PENDING)
-
-OutboxPublisherJob (every 1s, batch 500)
-   │ 4. read NEW events → send to Kafka, wait for broker ACK → mark SENT
-   ▼
-create_order_topic
-   ▼
-product-service / OrderConsumer (T2)
-   │ 5. skip if order already in processed_orders (duplicate message)
-   │ 6. decrease stock with a conditional UPDATE (stock >= quantity)
-   │ 7. send RESERVED or CANCEL → set published = true
-   ▼
-update_order_topic
-   ▼
-order-service / InventoryConsumer (T3)
-     8. only if order is PENDING: RESERVED → CONFIRMED, CANCEL → CANCELLED
+Client ─POST /api/v1/order─► order-service: pre-check (Feign) → T1 (order + outbox) → 201 PENDING
+OutboxPublisherJob ─► inventory.command ─► product-service: reserve stock (T2)
+                                            ─► inventory.result ─► order-service: CONFIRMED / CANCELLED (T3)
+PendingOrderTimeoutJob: PENDING > 5 min → CANCELLED + RELEASE_STOCK
 ```
 
-Details:  [OrderConsumer_ErrorHandling.md](backend/OrderConsumer_ErrorHandling.md)
+**Key points**
+- **Idempotent checkout:** `Idempotency-Key` header + unique `(user_id, idempotency_key)`; a retry returns the same order.
+- **Server prices win:** client prices are only compared; a difference returns `409 PRICE_CHANGED`.
+- **Outbox:** the order and its event are saved in one transaction; a job publishes the event, so nothing is lost.
+- **Idempotent consumer:** `processed_orders` makes duplicate messages harmless; stock is never reserved twice.
+- **Compensation + timeout:** a failed reservation or an order stuck `PENDING` for 5 minutes is cancelled,
+  and reserved stock is released.
+- **Ordering:** events are keyed by `orderId`, so one order's events stay in order on one partition.
+- **Failures:** records that keep failing go to a DLT; if Kafka is down the order is still created and
+  completes when Kafka is back.
+
+Details (error codes, topics, DLTs, Kafka down, full sequence): [ORDER_FLOW_DETAILS.md](backend/ORDER_FLOW_DETAILS.md)
+
 
 ## Tech stack
 - Frontend: React + Vite.

@@ -4,6 +4,9 @@ spring:
   profiles:
     active: dev
   kafka:
+    # Dev creates its topics on startup; set to false where topics are managed as infrastructure
+    admin:
+      auto-create: ${KAFKA_ADMIN_AUTO_CREATE:true}
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9193}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
@@ -12,15 +15,12 @@ spring:
       group-id: product
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      # A record that cannot be deserialized goes to the DLT instead of failing poll() forever
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
       properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
         spring.json.trusted.packages: "*"
-    topic:
-      name: product_topics
-    create-order-topic:
-      name: create_order_topic
-    update-order-topic:
-        name: update_order_topic
+        spring.json.value.default.type: net.javaguides.common_lib.dto.order.OrderMessageEvent
 
   data:
     redis:
@@ -62,3 +62,11 @@ cloudinary:
   cloud-name: ${CLOUDINARY_CLOUD_NAME:shopdevtri}
   api-key: ${CLOUDINARY_API_KEY:}
   api-secret: ${CLOUDINARY_API_SECRET:}
+
+# Topic names (see KafkaTopicsProperties); topics owned by this service are created with this partition count
+app:
+  kafka:
+    topics:
+      inventory-command: ${KAFKA_TOPIC_INVENTORY_COMMAND:inventory.command}
+      inventory-result: ${KAFKA_TOPIC_INVENTORY_RESULT:inventory.result}
+      partitions: 3
