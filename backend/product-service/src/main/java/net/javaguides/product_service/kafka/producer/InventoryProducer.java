@@ -2,9 +2,9 @@ package net.javaguides.product_service.kafka.producer;
 
 import lombok.RequiredArgsConstructor;
 import net.javaguides.common_lib.dto.order.OrderMessageEvent;
+import net.javaguides.product_service.config.KafkaTopicsProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
@@ -16,9 +16,7 @@ public class InventoryProducer {
     private static final Logger LOGGER = LoggerFactory.getLogger(InventoryProducer.class);
 
     private final KafkaTemplate<String, OrderMessageEvent> kafkaTemplate;
-
-    @Value("${spring.kafka.update-order-topic.name}")
-    private String updateOrderTopic;
+    private final KafkaTopicsProperties topics;
 
     /**
      * Publish the reservation result, keyed by orderId to keep per-order ordering.
@@ -26,7 +24,7 @@ public class InventoryProducer {
      */
     public void sendOrderStatusUpdate(OrderMessageEvent orderMessageEvent) {
         try {
-            kafkaTemplate.send(updateOrderTopic, orderMessageEvent.getOrderId(), orderMessageEvent).get();
+            kafkaTemplate.send(topics.inventoryResult(), orderMessageEvent.getOrderId(), orderMessageEvent).get();
             LOGGER.info("Sent order status {} for order {}", orderMessageEvent.getStatus(), orderMessageEvent.getOrderId());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

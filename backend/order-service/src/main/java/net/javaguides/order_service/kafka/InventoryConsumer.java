@@ -29,7 +29,7 @@ public class InventoryConsumer {
      *
      * @param orderMessageEvent The order message event containing order details.
      */
-    @KafkaListener(topics = "${spring.kafka.update-order-topic.name}", groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = "${app.kafka.topics.inventory-result}", groupId = "${spring.kafka.consumer.group-id}")
     @Transactional
     public void consume(OrderMessageEvent orderMessageEvent) {
         String orderId = orderMessageEvent.getOrderId();

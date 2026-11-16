@@ -1,23 +1,30 @@
 package net.javaguides.order_service.config;
 
+import lombok.RequiredArgsConstructor;
 import org.apache.kafka.clients.admin.NewTopic;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.TopicBuilder;
 
+/**
+ * Topics this service writes to. Declared here so KafkaAdmin creates them on startup;
+ * names are read from {@link KafkaTopicsProperties}, never from these beans.
+ */
 @Configuration
+@RequiredArgsConstructor
 class KafkaTopicConfig {
 
-    @Value("${spring.kafka.topic.name}")
-    private String orderTopic;
+    private final KafkaTopicsProperties topics;
 
-    @Value("${spring.kafka.create-order-topic.name}")
-    private String createOrderTopic;
-
-    //spring bean for kafka topic
+    /** Commands sent to product-service. */
     @Bean
-    public NewTopic createOrderTopic(){
-        return TopicBuilder.name(createOrderTopic).build();
+    NewTopic inventoryCommandTopic() {
+        return TopicBuilder.name(topics.inventoryCommand()).partitions(topics.partitions()).build();
+    }
+
+    /** Failed inventory results, written by this service's error handler (same partition count as the source). */
+    @Bean
+    NewTopic inventoryResultDltTopic() {
+        return TopicBuilder.name(topics.inventoryResultDlt()).partitions(topics.partitions()).build();
     }
 }

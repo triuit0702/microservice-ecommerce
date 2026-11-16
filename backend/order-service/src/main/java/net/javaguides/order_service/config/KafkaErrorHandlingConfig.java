@@ -1,6 +1,5 @@
 package net.javaguides.order_service.config;
 
-import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.Serializer;
@@ -11,7 +10,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.CommonErrorHandler;
@@ -26,17 +24,13 @@ import java.util.Map;
 
 /**
  * Error handling of Kafka listeners (picked up by Spring Boot's listener container factory).
- * A record that keeps failing (or cannot be deserialized) is moved to "<topic>-dlt" so it never
- * blocks the records behind it on the same partition.
+ * A record that keeps failing (or cannot be deserialized) is moved to the inventory result DLT
+ * (declared in {@link KafkaTopicConfig}) so it never blocks the records behind it on the same partition.
  */
 @Configuration
 public class KafkaErrorHandlingConfig {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaErrorHandlingConfig.class);
-    private static final String DLT_SUFFIX = "-dlt";
-
-    @Value("${spring.kafka.update-order-topic.name}")
-    private String updateOrderTopic;
 
     // Retries for transient errors (e.g. DB down, optimistic lock conflict); deserialization errors are never retried
     @Value("${order.kafka.retry.interval-ms:1000}")
@@ -46,19 +40,15 @@ public class KafkaErrorHandlingConfig {
     private long retryMaxAttempts;
 
     @Bean
-    public NewTopic updateOrderDeadLetterTopic() {
-        return TopicBuilder.name(updateOrderTopic + DLT_SUFFIX).build();
-    }
-
-    @Bean
-    public CommonErrorHandler kafkaErrorHandler(KafkaProperties kafkaProperties) {
+    public CommonErrorHandler kafkaErrorHandler(KafkaProperties kafkaProperties, KafkaTopicsProperties topics) {
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(
                 deadLetterTemplate(kafkaProperties),
-                // partition -1: let Kafka choose, the DLT may have fewer partitions than the source topic
+                // The only listener consumes inventory results; the DLT has the same partition count, so the record
+                // keeps its partition (and per-order ordering)
                 (consumerRecord, ex) -> {
                     LOGGER.error("Kafka record {}-{}@{} moved to DLT: {}", consumerRecord.topic(),
                             consumerRecord.partition(), consumerRecord.offset(), ex.getMessage());
-                    return new TopicPartition(consumerRecord.topic() + DLT_SUFFIX, -1);
+                    return new TopicPartition(topics.inventoryResultDlt(), consumerRecord.partition());
                 });
         return new DefaultErrorHandler(recoverer, new FixedBackOff(retryIntervalMs, retryMaxAttempts));
     }

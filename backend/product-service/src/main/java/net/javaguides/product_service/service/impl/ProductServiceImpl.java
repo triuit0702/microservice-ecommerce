@@ -16,7 +16,6 @@ import net.javaguides.product_service.entity.ProductVariant;
 import net.javaguides.product_service.redis.ProductRedis;
 import net.javaguides.product_service.entity.Product;
 import net.javaguides.product_service.exception.ProductException;
-import net.javaguides.product_service.kafka.producer.ProductProducer;
 import net.javaguides.product_service.repository.ProductRepository;
 import net.javaguides.product_service.repository.ProductVariantRepository;
 import net.javaguides.product_service.service.CategoryService;
@@ -49,7 +48,6 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ProductServiceImpl implements ProductService {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProductServiceImpl.class);
-    private final ProductProducer productProducer;
     private final ProductRepository productRepository;
     private final ProductVariantRepository productVariantRepository;
     private final ModelMapper modelMapper;

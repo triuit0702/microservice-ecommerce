@@ -192,6 +192,8 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findById(orderId).orElse(null);
         // Re-checked inside the transaction: the inventory result may have arrived since the order was selected
         if (order == null || !OrderStatus.PENDING.name().equals(order.getStatus())) {
+            LOGGER.warn("Skip timeout cancel for order {}: status is {}",
+                    orderId, order == null ? "<not found>" : order.getStatus());
             return false;
         }
         order.cancel(reason);

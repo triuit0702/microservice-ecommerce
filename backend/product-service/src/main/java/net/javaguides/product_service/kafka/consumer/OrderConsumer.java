@@ -38,7 +38,7 @@ public class OrderConsumer {
      * Not transactional on purpose: the stock transaction commits inside InventoryService
      * before the result is published, so order-service never sees RESERVED for a rolled-back reservation.
      */
-    @KafkaListener(topics = "${spring.kafka.create-order-topic.name}", groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = "${app.kafka.topics.inventory-command}", groupId = "${spring.kafka.consumer.group-id}")
     public void consume(OrderMessageEvent orderEvent) {
         LOGGER.info("Received OrderEvent: {}", orderEvent);
 
