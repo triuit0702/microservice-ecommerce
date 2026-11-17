@@ -18,8 +18,10 @@ import {
     serviceGetAllUser,
     serviceSaveUser,
     serviceDeleteUser,
-    serviceUpdateUser
+    serviceUpdateUser,
+    serviceGetRoles
 } from '../../services/UserService';
+import { USER_CREATE, USER_DELETE, USER_UPDATE, hasPermission } from '../../constants/permissions';
 import Pagination from '../common/Pagination';
 import ModalConfirm from '../common/ModalConfirm';
 
@@ -51,13 +53,8 @@ export default function UserManagement() {
     const [editingUser, setEditingUser] = useState(false);
 
     const [users, setUsers] = useState([]);
-    const [userDetail, setUserDetail] = useState({
-        id: null,
-        name: '',
-        email: '',
-        roleId: '',
-        permissions: ''
-    });
+    const [userDetail, setUserDetail] = useState(null);
+    const [roles, setRoles] = useState([]);
 
     const [searchParams, setSearchParams] = useSearchParams();
     // Lấy page từ URL
@@ -74,21 +71,20 @@ export default function UserManagement() {
 
 
     const loadUsers = async () => {
-        let res = await serviceGetAllUser(page, pageSize);
-
-        const usersWithPermission = res.data.content.map(user => ({
-            ...user,
-            permissions: user.roles?.map(r => r.authority).join(", ")
-        }));
-
-        setUsers(usersWithPermission);
-
-        setTotalPages(res.data.totalPages);
+        const res = await serviceGetAllUser(page, pageSize);
+        const pageData = res.data.data;
+        setUsers(pageData.content);
+        setTotalPages(pageData.totalPages);
     }
 
     useEffect(() => {
         loadUsers();
     }, [page])
+
+    // role options for the form (code + label), no hard-coded role ids
+    useEffect(() => {
+        serviceGetRoles().then((res) => setRoles(res.data.data)).catch(() => setRoles([]));
+    }, [])
 
     function openAdd() {
         setUserDetail(null)
@@ -102,18 +98,28 @@ export default function UserManagement() {
         setUserDetail(item);
     }
 
-    const handleSave = async (data) => {
-        if (data.id === null) {
-            await serviceSaveUser(data);
-            showToast('Tạo user mới thành công', 'success');
-
-        } else {
-            await serviceUpdateUser(data);
-            showToast('Sửa user thành công', 'success');
+    // roles are sent as an array (roleCodes) so the backend already supports several roles per user
+    const handleSave = async (data, customerAccount) => {
+        const roleCodes = data.roleCode ? [data.roleCode] : [];
+        try {
+            if (data.id === null) {
+                await serviceSaveUser({ name: data.name, email: data.email, password: data.password, roleCodes });
+                showToast('Tạo user mới thành công', 'success');
+            } else {
+                // null keeps the current roles (customer accounts cannot change role)
+                await serviceUpdateUser(data.id, {
+                    name: data.name,
+                    email: data.email,
+                    roleCodes: customerAccount ? null : roleCodes
+                });
+                showToast('Sửa user thành công', 'success');
+            }
+        } catch {
+            // error toast is shown by AxiosClient
+            return;
         }
         setVisibleModal(false);
         loadUsers();
-
     }
 
     // delete user
@@ -123,7 +129,12 @@ export default function UserManagement() {
     }
 
     const deleteUser = async () => {
-        await serviceDeleteUser(deleteUserId);
+        try {
+            await serviceDeleteUser(deleteUserId);
+        } catch {
+            setVisibleDelete(false);
+            return;
+        }
         setVisibleDelete(false);
         showToast(tUser("deleteSuccess"), 'success');
         loadUsers();
@@ -136,10 +147,7 @@ export default function UserManagement() {
 
     //  Edit button
     function EditButton({ item }) {
-        let permissions = userLogin.permissions;
-
-        // let canSelfEdit = permissions && permissions.includes("SELF_USER_EDIT") && item.id == userLogin.id
-        if (permissions && permissions.includes("USER_UPDATE")) {
+        if (hasPermission(userLogin, USER_UPDATE)) {
             return <CButton size="sm"
                 color="warning"
                 className="me-2"
@@ -152,7 +160,8 @@ export default function UserManagement() {
 
     // Delete button
     function DeleteButton({ item }) {
-        if (userLogin.permissions && userLogin.permissions.includes("USER_DELETE")) {
+        // cannot delete yourself (also checked by the backend)
+        if (hasPermission(userLogin, USER_DELETE) && item.id !== userLogin.id) {
             return <CButton size="sm"
                 color="danger"
                 className="me-2"
@@ -179,13 +188,14 @@ export default function UserManagement() {
                 editingUser={editingUser}
                 hideModal={() => setVisibleModal(false)}
                 userDetail={userDetail}
+                roles={roles}
                 saveUser={handleSave}
             />
 
             <CCardHeader className="d-flex justify-content-between align-items-center">
                 <strong>Quản lý User</strong>
                 {
-                    userLogin && userLogin.permissions.includes("USER_CREATE") && (
+                    hasPermission(userLogin, USER_CREATE) && (
                         <CButton color="primary" onClick={() => openAdd()}>
                             Thêm User
                         </CButton>
@@ -202,7 +212,7 @@ export default function UserManagement() {
                             <CTableHeaderCell scope="col">{tUser("id")}</CTableHeaderCell>
 
                             <CTableHeaderCell scope="col">{tUser("name")}</CTableHeaderCell>
-                            <CTableHeaderCell scope="col">Permission</CTableHeaderCell>
+                            <CTableHeaderCell scope="col">Roles</CTableHeaderCell>
                             <CTableHeaderCell scope="col">{tUser("email")}</CTableHeaderCell>
                             <CTableHeaderCell scope="col" className="text-center">{tCommon("action")}</CTableHeaderCell>
                         </CTableRow>
@@ -214,7 +224,7 @@ export default function UserManagement() {
                                 <CTableHeaderCell scope="row">{item.id}</CTableHeaderCell>
 
                                 <CTableDataCell>{item.name}</CTableDataCell>
-                                <CTableDataCell>{item.permissions}</CTableDataCell>
+                                <CTableDataCell>{item.roles?.join(", ")}</CTableDataCell>
                                 <CTableDataCell>{item.email}</CTableDataCell>
 
                                 <CTableDataCell >

@@ -2,6 +2,7 @@ package net.javaguides.identity_service.repository;
 
 import net.javaguides.identity_service.dto.LoginChartProjection;
 import net.javaguides.identity_service.entity.UserCredential;
+import net.javaguides.identity_service.enums.ERole;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,32 +14,55 @@ import java.util.List;
 import java.util.Optional;
 
 public interface UserCredentialRepository extends JpaRepository<UserCredential, Long> {
-    Optional<UserCredential> findByNameAndDelFlgFalse(String username);
     Optional<UserCredential> findFirstByEmailAndDelFlgFalse(String email);
+    Optional<UserCredential> findByIdAndDelFlgFalse(Long id);
+
+    // deleted users get a "deleted_<id>_" prefix on name/email (unique constraints), so these check all rows
     boolean existsByName(String name);
+    boolean existsByEmail(String email);
+    boolean existsByNameAndIdNot(String name, Long id);
+    boolean existsByEmailAndIdNot(String email, Long id);
+
     Page<UserCredential> findByDelFlgFalse(Pageable pageable);
 
     // count total user active
     long countByDelFlgTrue();
 
-    // Lấy user kèm roles + permissions
+    @Query("""
+           SELECT COUNT(DISTINCT u.id)
+           FROM UserCredential u
+           JOIN u.roles r
+           WHERE r.name = :role AND u.delFlg = false
+           """)
+    long countActiveByRole(@Param("role") ERole role);
+
+    // LEFT JOIN: CUSTOMER has no permissions, an inner join would drop the user
     @Query("""
            SELECT DISTINCT u
            FROM UserCredential u
-           JOIN FETCH u.roles r
-           JOIN FETCH r.permissions
-           WHERE u.name = :username and u.delFlg = false
+           LEFT JOIN FETCH u.roles r
+           LEFT JOIN FETCH r.permissions
+           WHERE u.name = :username AND u.delFlg = false
            """)
-    Optional<UserCredential> findByUsernameWithPermissions(@Param("username") String username);
+    Optional<UserCredential> findActiveByNameWithPermissions(@Param("username") String username);
 
     @Query("""
            SELECT DISTINCT u
            FROM UserCredential u
-           JOIN FETCH u.roles r
-           JOIN FETCH r.permissions
-           WHERE u.id = :userId and u.delFlg = false
+           LEFT JOIN FETCH u.roles r
+           LEFT JOIN FETCH r.permissions
+           WHERE u.id = :userId AND u.delFlg = false
            """)
-    Optional<UserCredential> findByUserIdWithPermission(@Param("userId") Long userId);
+    Optional<UserCredential> findActiveByIdWithPermissions(@Param("userId") Long userId);
+
+    @Query("""
+           SELECT DISTINCT u
+           FROM UserCredential u
+           LEFT JOIN FETCH u.roles r
+           LEFT JOIN FETCH r.permissions
+           WHERE u.email = :email AND u.delFlg = false
+           """)
+    Optional<UserCredential> findActiveByEmailWithPermissions(@Param("email") String email);
 
     @Query("""
       SELECT COUNT(u.id)

@@ -1,102 +1,71 @@
 package net.javaguides.identity_service.controller;
 
-
-
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import net.javaguides.common_lib.dto.ApiResponse;
-import net.javaguides.identity_service.config.CustomUserDetails;
-import net.javaguides.identity_service.dto.AuthRequest;
-import net.javaguides.identity_service.dto.CurrentUserDto;
+import net.javaguides.identity_service.dto.AuthUserResponse;
 import net.javaguides.identity_service.dto.GoogleLoginRequest;
-import net.javaguides.identity_service.dto.LoginResponse;
-import net.javaguides.identity_service.dto.SignUpRequest;
+import net.javaguides.identity_service.dto.LoginRequest;
+import net.javaguides.identity_service.dto.RegisterRequest;
+import net.javaguides.identity_service.security.AuthUser;
 import net.javaguides.identity_service.service.AuthService;
-import net.javaguides.identity_service.service.UserCacheService;
-import net.javaguides.identity_service.service.UserService;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-//  Authen for client
+/**
+ * Authentication for both frontends. Tokens are only sent as httpOnly cookies, never in the body.
+ */
 @RestController
 @RequestMapping("api/v1/user/auth")
 @RequiredArgsConstructor
 public class AuthController {
     private final AuthService authService;
-    private final AuthenticationManager authenticationManager;
-    private final UserService userService;
-    private final UserCacheService userCacheService;
 
-    /**
-     * register new user
-     * @param signUpRequest
-     * @return
-     */
+    /** Self-registration, the account is always CUSTOMER. */
     @PostMapping("/register")
-    public ResponseEntity<ApiResponse<String>> addNewUser(@RequestBody SignUpRequest signUpRequest) {
-        String message = authService.saveUser(signUpRequest);
-        return new ResponseEntity<>(ApiResponse.success(message), HttpStatus.CREATED);
+    public ResponseEntity<ApiResponse<String>> register(@Valid @RequestBody RegisterRequest request) {
+        authService.register(request);
+        return new ResponseEntity<>(ApiResponse.success("User registered"), HttpStatus.CREATED);
     }
 
-    /**
-     * login and generate token
-     * @param authRequest
-     * @param response
-     * @return
-     */
+    /** Login with username/password, sets access_token and refresh_token cookies. */
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<?>> login(@RequestBody AuthRequest authRequest, HttpServletResponse response) {
-        LoginResponse loginResponse = authService.login(authRequest, response);
-        return new ResponseEntity<>(ApiResponse.success(loginResponse), HttpStatus.OK);
+    public ResponseEntity<ApiResponse<AuthUserResponse>> login(@Valid @RequestBody LoginRequest request,
+                                                               HttpServletResponse response) {
+        return ResponseEntity.ok(ApiResponse.success(authService.login(request, response)));
     }
 
-    /**
-     * Login with Google (OAuth2 authorization code flow) and set token cookie
-     * @param googleLoginRequest authorization code from Google
-     * @param response
-     * @return
-     */
+    /** Login with Google (authorization code flow), sets auth cookies. */
     @PostMapping("/google")
-    public ResponseEntity<ApiResponse<?>> loginWithGoogle(@RequestBody GoogleLoginRequest googleLoginRequest, HttpServletResponse response) {
-        LoginResponse loginResponse = authService.loginWithGoogle(googleLoginRequest, response);
-        return new ResponseEntity<>(ApiResponse.success(loginResponse), HttpStatus.OK);
+    public ResponseEntity<ApiResponse<AuthUserResponse>> loginWithGoogle(@RequestBody GoogleLoginRequest request,
+                                                                         HttpServletResponse response) {
+        return ResponseEntity.ok(ApiResponse.success(authService.loginWithGoogle(request, response)));
     }
 
-    /**
-     * Get current user information
-     * @param currentUser
-     * @return
-     */
-    @GetMapping("/me")
-    public ResponseEntity<ApiResponse<?>> getCurrentUser(@AuthenticationPrincipal CustomUserDetails currentUser) {
-        // get current user
-        CurrentUserDto currentUserDto = authService.getCurrentUser(currentUser.getId());
-        return new ResponseEntity<>(ApiResponse.success(currentUserDto), HttpStatus.OK);
+    /** Rotate the refresh_token cookie and issue a new access_token cookie. */
+    @PostMapping("/refresh")
+    public ResponseEntity<Void> refresh(HttpServletRequest request, HttpServletResponse response) {
+        authService.refresh(request, response);
+        return ResponseEntity.noContent().build();
     }
 
-    /**
-     * Logout user and clear the token cookie
-     * @param response
-     * @return
-     */
+    /** Public on purpose: works even when the access token has expired. */
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<String>> logout(HttpServletResponse response) {
-        // Xoá cookie: attributes must match the login cookie (AuthServiceImpl.addTokenCookie)
-        ResponseCookie cookie = ResponseCookie.from("token", "")
-                .httpOnly(true)
-                .path("/")
-                .sameSite("None")
-                .secure(true)
-                .maxAge(0) // Xoá cookie ngay lập tức
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-
-        return new ResponseEntity<>(ApiResponse.success("Logged out successfully"), HttpStatus.OK);
+    public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
+        authService.logout(request, response);
+        return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<AuthUserResponse>> getCurrentUser(@AuthenticationPrincipal AuthUser currentUser) {
+        return ResponseEntity.ok(ApiResponse.success(authService.getCurrentUser(currentUser.id())));
+    }
 }

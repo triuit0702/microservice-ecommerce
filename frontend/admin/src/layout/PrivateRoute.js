@@ -1,62 +1,46 @@
-import { Navigate, useLocation } from 'react-router-dom'
+import { Navigate } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
 import { useEffect } from 'react'
-import { serviceFetchCurrentUser } from '../services/AuthService'
+import { serviceFetchCurrentUser, serviceLogout } from '../services/AuthService'
+import { isStaff } from '../constants/permissions'
 
 import LoadingScreen from '../views/common/LoadingScreen'
 
+// Login state comes only from /auth/me (auth cookies are httpOnly).
+// 200 -> logged in; 401 -> AxiosClient tries /auth/refresh once, then we go to /login.
 const PrivateRoute = ({ children }) => {
     const { user, loading } = useSelector((state) => state.auth)
-    const dispatch = useDispatch();
-
-    const token = localStorage.getItem("token");
-
-    const location = useLocation();
-    // if (["/login", "/403"].includes(location.pathname)) {
-    //     return children
-    // }
+    const dispatch = useDispatch()
 
     useEffect(() => {
-
-        if (user === null) {
-            if (token) {
-                dispatch({
-                    type: 'SET_LOADING',
-                    payload: true
-                });
-                serviceFetchCurrentUser()
-                    .then(res => {
-
-                        dispatch({
-                            type: 'REFRESH',
-                            payload: res.data.data,
-                        })
-                    })
-                    .catch(() => {
-                        dispatch({ type: 'LOGOUT' }) // nếu token không hợp lệ
-                        localStorage.removeItem("token");
-                    })
-                    .finally(() => {
-                        // 🔥 BẮT BUỘC
-                        dispatch({ type: "SET_LOADING", payload: false });
-                    });;
-            } else {
-                // không có token → logout để redirect
-                dispatch({ type: 'LOGOUT' });
-                localStorage.removeItem("token");
-            }
-
+        if (user !== null) {
+            return
         }
-    }, [user, dispatch])
+        let cancelled = false
+        dispatch({ type: 'SET_LOADING', payload: true })
+        serviceFetchCurrentUser()
+            .then(async (res) => {
+                if (cancelled) return
+                const currentUser = res.data.data
+                if (!isStaff(currentUser)) {
+                    // customer accounts cannot use the admin app
+                    await serviceLogout().catch(() => {})
+                    dispatch({ type: 'LOGOUT' })
+                    return
+                }
+                dispatch({ type: 'REFRESH', payload: currentUser })
+            })
+            .catch(() => {
+                if (!cancelled) dispatch({ type: 'LOGOUT' })
+            })
+        return () => { cancelled = true }
+    }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-    if (loading) return <LoadingScreen />; // chờ fetch xong
+    if (loading) return <LoadingScreen />
 
-    const isAuthenticated = !!user || !!token; // token còn thì vẫn hiển thị page
+    if (!user) return <Navigate to="/login" replace />
 
-    // Chỉ redirect nếu user=null và token cũng không còn
-    if (!isAuthenticated) return <Navigate to="/login" replace />;
-
-    return children;
+    return children
 }
 
 export default PrivateRoute

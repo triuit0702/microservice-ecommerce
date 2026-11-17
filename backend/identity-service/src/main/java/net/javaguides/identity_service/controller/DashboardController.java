@@ -3,7 +3,6 @@ package net.javaguides.identity_service.controller;
 import lombok.RequiredArgsConstructor;
 import net.javaguides.common_lib.dto.ApiResponse;
 import net.javaguides.identity_service.dto.DashboardResponse;
-import net.javaguides.identity_service.dto.LoginResponse;
 import net.javaguides.identity_service.service.DashboardService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

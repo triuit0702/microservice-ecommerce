@@ -28,6 +28,7 @@ import avatar8 from './../../assets/images/avatars/8.jpg'
 import { useDispatch } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import { useSelector } from "react-redux";
+import { serviceLogout } from '../../services/AuthService'
 
 
 const AppHeaderDropdown = () => {
@@ -36,12 +37,11 @@ const AppHeaderDropdown = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
+  const handleLogout = async () => {
+    // backend revokes the refresh token and clears the auth cookies
+    await serviceLogout().catch(() => {})
     dispatch({ type: 'LOGOUT' })
-
-    // reset URL về home
-    navigate("/", { replace: true });
+    navigate("/login", { replace: true });
   }
 
   return (

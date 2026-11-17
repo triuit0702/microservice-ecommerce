@@ -1,7 +1,5 @@
 import axiosClient from './AxiosClient'
-const API_URL = '/api/v1/user/admin'
-
-
+const API_URL = '/api/v1/user/admin/users'
 
 export const serviceGetAllUser = (page, size) => axiosClient.get(API_URL, {
     params: {
@@ -9,12 +7,10 @@ export const serviceGetAllUser = (page, size) => axiosClient.get(API_URL, {
     }
 })
 
-export const serviceSaveUser = (signUpRequest) => axiosClient.post(API_URL, signUpRequest)
+export const serviceSaveUser = (createUserRequest) => axiosClient.post(API_URL, createUserRequest)
 
-export const serviceDeleteUser = (userId) => axiosClient.delete(API_URL, {
-    params: { userId: userId }
-});
+export const serviceUpdateUser = (userId, updateUserRequest) => axiosClient.put(`${API_URL}/${userId}`, updateUserRequest)
 
-export const serviceUpdateUser = (signUpRequest) => axiosClient.put(API_URL, signUpRequest)
+export const serviceDeleteUser = (userId) => axiosClient.delete(`${API_URL}/${userId}`)
 
-
+export const serviceGetRoles = () => axiosClient.get('/api/v1/user/roles')

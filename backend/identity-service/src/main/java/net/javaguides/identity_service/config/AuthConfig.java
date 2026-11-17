@@ -1,8 +1,11 @@
 package net.javaguides.identity_service.config;
 
-import net.javaguides.identity_service.filter.JwtAuthenticationFilter;
+import lombok.RequiredArgsConstructor;
 import net.javaguides.identity_service.handler.CustomAccessDeniedHandler;
 import net.javaguides.identity_service.handler.CustomAuthenticationEntryPoint;
+import net.javaguides.identity_service.security.CustomUserDetailsService;
+import net.javaguides.identity_service.security.JwtAuthenticationFilter;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -12,68 +15,51 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
+@EnableConfigurationProperties(JwtProperties.class)
+@RequiredArgsConstructor
 public class AuthConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
     private final CustomAccessDeniedHandler accessDeniedHandler;
-
-    public AuthConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
-                      CustomAuthenticationEntryPoint authenticationEntryPoint,
-                      CustomAccessDeniedHandler accessDeniedHandler) {
-        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-        this.authenticationEntryPoint = authenticationEntryPoint;
-        this.accessDeniedHandler = accessDeniedHandler;
-    }
-
-    @Bean
-    public UserDetailsService userDetailsService() {
-        return new CustomUserDetailsService();
-    }
+    private final CustomUserDetailsService userDetailsService;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
-                .csrf(csrf -> csrf.disable())
-               // .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                // CSRF is covered by SameSite cookies (access_token=Lax, refresh_token=Strict)
+                // and no GET endpoint changes data, see AUTH_DESIGN.md 3.4
+                .csrf(AbstractHttpConfigurer::disable)
                 .exceptionHandling(exceptionHandling -> exceptionHandling
-                        .authenticationEntryPoint(authenticationEntryPoint)  // Custom AuthenticationEntryPoint
-                        .accessDeniedHandler(accessDeniedHandler)  // Custom AccessDeniedHandler
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler)
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/v1/user/auth/register",
                                 "/api/v1/user/auth/login",
                                 "/api/v1/user/auth/google",
-                                "/api/v1/user/auth/me",
+                                "/api/v1/user/auth/refresh",
                                 "/api/v1/user/auth/logout",
-                                "/api/v1/user/auth/validate",
-                                "/swagger-ui/**","/v2/api-docs",
-                                "/swagger-resources",
-                                "/swagger-resources/**",
-                                "/configuration/ui",
-                                "/configuration/security",
+                                "/actuator/health",
+                                "/actuator/info",
+                                "/error",
+                                "/swagger-ui/**",
                                 "/swagger-ui.html",
-                                "/webjars/**",
-                                "/actuator/**",
                                 "/v3/api-docs/**").permitAll()
-
-                        .anyRequest().hasAnyAuthority("ADMINISTRATOR", "EMPLOYEE")
-                        //.anyRequest().hasAnyAuthority("ADMINISTRATOR")
+                        .requestMatchers("/api/v1/user/auth/me").authenticated()
+                        // admin app endpoints (users, roles, dashboard, audit logs): staff only,
+                        // fine-grained checks with @PreAuthorize on each method
+                        .anyRequest().hasAnyRole("ADMINISTRATOR", "EMPLOYEE")
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
@@ -88,7 +74,7 @@ public class AuthConfig {
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authenticationProvider = new DaoAuthenticationProvider();
-        authenticationProvider.setUserDetailsService(userDetailsService());
+        authenticationProvider.setUserDetailsService(userDetailsService);
         authenticationProvider.setPasswordEncoder(passwordEncoder());
         return authenticationProvider;
     }
@@ -96,22 +82,5 @@ public class AuthConfig {
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
-    }
-
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
-
-        config.setAllowedOrigins(List.of(
-                "http://localhost:3000", // CRA
-                "http://localhost:5173"  // Vite
-        ));
-        config.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-        return source;
     }
 }

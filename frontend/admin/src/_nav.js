@@ -17,6 +17,7 @@ import {
 } from '@coreui/icons'
 
 import { CNavGroup, CNavItem, CNavTitle } from '@coreui/react'
+import { USER_READ } from './constants/permissions'
 
 const _nav = [
   {
@@ -31,6 +32,8 @@ const _nav = [
     name: 'Users',
     to: '/users',
     icon: <CIcon icon={cilUser} customClassName="nav-icon" />,
+    // shown only when the user has this permission (filtered in AppSidebar)
+    permission: USER_READ,
   },
 
   {

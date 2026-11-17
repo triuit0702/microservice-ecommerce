@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -27,6 +28,8 @@ public class UserCredential {
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
 
+    // batch-load roles of a page of users instead of one query per user (N+1)
+    @BatchSize(size = 50)
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "user_roles",

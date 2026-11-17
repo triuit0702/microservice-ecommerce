@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.BatchSize;
 import net.javaguides.identity_service.enums.ERole;
 
 import java.util.Set;
@@ -24,6 +25,7 @@ public class Role {
     @Enumerated(EnumType.STRING)
     private ERole name;
 
+    @BatchSize(size = 50)
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "role_permissions",

@@ -1,14 +1,15 @@
 package net.javaguides.api_gateway.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import net.javaguides.api_gateway.util.JwtUtil;
+import io.jsonwebtoken.JwtException;
+import net.javaguides.api_gateway.security.AuthUser;
+import net.javaguides.api_gateway.security.JwtClaims;
+import net.javaguides.api_gateway.security.JwtVerifier;
 import net.javaguides.api_gateway.util.UserHeaders;
 import net.javaguides.common_lib.dto.ApiResponse;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -18,88 +19,59 @@ import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
 
+/**
+ * Route filter: verifies the access_token cookie once, stores the {@link AuthUser} in an exchange
+ * attribute for RoleBasedAccessFilter, and sets X-User-* headers for downstream services.
+ */
 @Component
 public class AuthenticationFilter extends AbstractGatewayFilterFactory<AuthenticationFilter.Config> {
 
-    @Autowired
-    private RouteValidator routeValidator;
+    private final JwtVerifier jwtVerifier;
+    private final ObjectMapper objectMapper;
 
-    @Autowired
-    private JwtUtil jwtUtil;
-
-    @Autowired
-    private ObjectMapper objectMapper;  // Sử dụng để serialize ApiResponse
-
-    public AuthenticationFilter() {
+    public AuthenticationFilter(JwtVerifier jwtVerifier, ObjectMapper objectMapper) {
         super(Config.class);
+        this.jwtVerifier = jwtVerifier;
+        this.objectMapper = objectMapper;
     }
 
     @Override
     public GatewayFilter apply(Config config) {
         return (exchange, chain) -> {
-            if (routeValidator.isSecured.test(exchange.getRequest())) {
-                // Kiểm tra xem request có chứa cookie không
-                HttpHeaders headers = exchange.getRequest().getHeaders();
-                if (!headers.containsKey(HttpHeaders.COOKIE)) {
-                    return this.onError(exchange, "Missing cookies", HttpStatus.UNAUTHORIZED);
-                }
-
-                // Lấy token từ cookie
-                String token = extractTokenFromCookies(exchange.getRequest());
-                if (token == null) {
-                    return this.onError(exchange, "Missing or invalid token in cookies", HttpStatus.UNAUTHORIZED);
-                }
-
-                Long userId;
-                String email;
-                try {
-                    // Kiểm tra tính hợp lệ của token
-                    jwtUtil.validateToken(token);
-                    userId = jwtUtil.extractUserId(token);
-                    email = jwtUtil.extractEmail(token);
-                } catch (Exception e) {
-                    return this.onError(exchange, "Unauthorized access", HttpStatus.UNAUTHORIZED);
-                }
-
-                // Token cũ (trước khi có claim userId) -> bắt đăng nhập lại
-                if (userId == null) {
-                    return this.onError(exchange, "Token is outdated, please login again", HttpStatus.UNAUTHORIZED);
-                }
-
-                // Gắn thông tin user cho service phía sau (header client gửi đã bị StripUserHeadersFilter xoá)
-                ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
-                        .headers(h -> {
-                            h.set(UserHeaders.USER_ID, String.valueOf(userId));
-                            if (email != null) {
-                                h.set(UserHeaders.USER_EMAIL, email);
-                            }
-                        })
-                        .build();
-                return chain.filter(exchange.mutate().request(mutatedRequest).build());
+            HttpCookie cookie = exchange.getRequest().getCookies().getFirst(JwtClaims.ACCESS_COOKIE);
+            if (cookie == null || cookie.getValue().isBlank()) {
+                return onError(exchange, "Missing access token", HttpStatus.UNAUTHORIZED);
             }
-            return chain.filter(exchange);
+
+            AuthUser user;
+            try {
+                user = jwtVerifier.verify(cookie.getValue());
+            } catch (JwtException | IllegalArgumentException e) {
+                // expired or invalid: the frontend calls /auth/refresh on 401
+                return onError(exchange, "Invalid or expired access token", HttpStatus.UNAUTHORIZED);
+            }
+            exchange.getAttributes().put(AuthUser.ATTRIBUTE, user);
+
+            // client-sent X-User-* headers were already removed by StripUserHeadersFilter
+            ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
+                    .headers(headers -> {
+                        headers.set(UserHeaders.USER_ID, String.valueOf(user.id()));
+                        if (user.email() != null) {
+                            headers.set(UserHeaders.USER_EMAIL, user.email());
+                        }
+                    })
+                    .build();
+            return chain.filter(exchange.mutate().request(mutatedRequest).build());
         };
     }
 
-
-    private String extractTokenFromCookies(ServerHttpRequest request) {
-        return request.getCookies().getFirst("token") != null ?
-                request.getCookies().getFirst("token").getValue() : null;
-    }
-
-    // Hàm để trả về phản hồi lỗi tùy chỉnh
     private Mono<Void> onError(ServerWebExchange exchange, String errorMessage, HttpStatus httpStatus) {
         exchange.getResponse().setStatusCode(httpStatus);
         exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
-
         try {
-            // Chuyển ApiResponse thành JSON
             byte[] bytes = objectMapper.writeValueAsString(ApiResponse.error(errorMessage)).getBytes(StandardCharsets.UTF_8);
-
-            return exchange.getResponse().writeWith(Mono.just(exchange.getResponse()
-                    .bufferFactory().wrap(bytes)));
+            return exchange.getResponse().writeWith(Mono.just(exchange.getResponse().bufferFactory().wrap(bytes)));
         } catch (Exception e) {
-            // Xử lý nếu gặp lỗi trong quá trình serialize
             return Mono.error(e);
         }
     }

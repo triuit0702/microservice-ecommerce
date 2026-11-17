@@ -1,45 +1,62 @@
 
 import { CButton, CFormInput, CFormLabel, CFormSelect, CModal, CModalBody, CModalFooter, CModalHeader } from '@coreui/react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { STAFF_ROLES } from '../../constants/permissions'
+
+const INIT_FORM_DATA = {
+    id: null,
+    name: "",
+    email: "",
+    password: "",
+    roleCode: ""
+}
+
+// Customer accounts keep CUSTOMER (customers and staff are separate groups)
+export const isCustomerAccount = (user) => !!user?.roles?.includes('CUSTOMER')
+
+const toFormData = (userDetail) => {
+    if (!userDetail) return INIT_FORM_DATA
+    return {
+        ...INIT_FORM_DATA,
+        id: userDetail.id,
+        name: userDetail.name ?? "",
+        email: userDetail.email ?? "",
+        roleCode: userDetail.roles?.[0] ?? ""
+    }
+}
 
 export default function ModalUser({
     visible,
     editingUser,
     hideModal,
     userDetail,
+    roles,
     saveUser
 }) {
 
-    const initFormData = {
-        id: null,
-        name: "",
-        email: "",
-        roleId: ""
+    const [formData, setFormData] = useState(INIT_FORM_DATA)
+
+    // reset form khi modal mở hoặc đổi user (cập nhật state trong render thay vì useEffect)
+    const [prevProps, setPrevProps] = useState({ visible, userDetail })
+    if (prevProps.visible !== visible || prevProps.userDetail !== userDetail) {
+        setPrevProps({ visible, userDetail })
+        if (visible) setFormData(toFormData(userDetail))
     }
-    const [formData, setFormData] = useState(initFormData)
 
-
+    const customerAccount = editingUser && isCustomerAccount(userDetail)
+    // admin only creates/edits staff accounts; a customer's role is shown read-only
+    const roleOptions = customerAccount
+        ? (roles || []).filter((role) => role.code === 'CUSTOMER')
+        : (roles || []).filter((role) => STAFF_ROLES.includes(role.code))
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value })
     }
 
     const onClose = () => {
-        setFormData({
-            id: null,
-            name: "",
-            email: "",
-            roleId: ""
-        })
+        setFormData(INIT_FORM_DATA)
         hideModal()
-
     }
-
-    useEffect(() => {
-        if (!visible) return;
-        if (userDetail) setFormData(userDetail)
-        else setFormData(initFormData)
-    }, [visible, userDetail])
 
     return (
 
@@ -60,21 +77,33 @@ export default function ModalUser({
                     label="Email"
                     value={formData.email}
                     onChange={handleChange}
+                    className="mb-3"
                 />
+
+                {/* password chỉ nhập khi tạo mới; sửa user không đổi password */}
+                {!editingUser && (
+                    <CFormInput
+                        name="password"
+                        type="password"
+                        label="Password"
+                        autoComplete="new-password"
+                        value={formData.password}
+                        onChange={handleChange}
+                    />
+                )}
 
                 <CFormLabel className="mt-2">Role</CFormLabel>
                 <CFormSelect
-                    name="roleId"
-                    value={formData.roleId}
+                    name="roleCode"
+                    value={formData.roleCode}
                     onChange={handleChange}
+                    disabled={customerAccount}
                 >
                     <option value="">-- Select role --</option>
-                    <option value="1">Admin</option>
-                    <option value="2">Employee</option>
-                    <option value="3">Customer</option>
+                    {roleOptions.map((role) => (
+                        <option key={role.code} value={role.code}>{role.label}</option>
+                    ))}
                 </CFormSelect>
-
-
 
             </CModalBody>
 
@@ -82,7 +111,7 @@ export default function ModalUser({
                 <CButton color="secondary" onClick={onClose}>
                     Hủy
                 </CButton>
-                <CButton color="primary" onClick={() => saveUser(formData)} >
+                <CButton color="primary" onClick={() => saveUser(formData, customerAccount)} >
                     Lưu
                 </CButton>
             </CModalFooter>

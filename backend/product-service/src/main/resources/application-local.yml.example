@@ -1,0 +1,6 @@
+# Copy to application-local.yml (gitignored) and fill in your values.
+# Alternatively set env vars CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET.
+cloudinary:
+  cloud-name: shopdevtri
+  api-key:
+  api-secret:

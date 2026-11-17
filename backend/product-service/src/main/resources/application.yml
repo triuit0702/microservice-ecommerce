@@ -3,6 +3,9 @@ spring:
     name: product-service
   profiles:
     active: dev
+  # Local secrets (Cloudinary keys...) in the gitignored application-local.yml, see application-local.yml.example
+  config:
+    import: optional:classpath:application-local.yml
   kafka:
     # Dev creates its topics on startup; set to false where topics are managed as infrastructure
     admin:
@@ -58,7 +61,7 @@ management:
         include: "*"
 
 cloudinary:
-  # Secrets come from env vars, never hard-code them here
+  # Secrets come from env vars or application-local.yml, never hard-code them here
   cloud-name: ${CLOUDINARY_CLOUD_NAME:shopdevtri}
   api-key: ${CLOUDINARY_API_KEY:}
   api-secret: ${CLOUDINARY_API_SECRET:}

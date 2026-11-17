@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { Button, Box, Divider, Alert } from "@mui/material";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Button, Box, Divider, Alert, Link, Typography } from "@mui/material";
+import { Link as RouterLink, useNavigate, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { useForm } from "react-hook-form";
 import CommonTextField from "../components/FormValidate/CommonTextField";
@@ -132,6 +132,10 @@ export default function Login() {
                     gap: 1
                 }}
             >
+                {location.state?.registered && (
+                    <Alert severity="success">Đăng ký thành công, vui lòng đăng nhập.</Alert>
+                )}
+
                 <CommonTextField
                     name="username"
                     label="Email"
@@ -174,6 +178,11 @@ export default function Login() {
                         {errorMessage}
                     </Alert>
                 )}
+
+                <Typography variant="body2" sx={{ textAlign: "center", mt: 1 }}>
+                    Chưa có tài khoản?{" "}
+                    <Link component={RouterLink} to="/register">Đăng ký</Link>
+                </Typography>
             </Box>
         </form>
     );

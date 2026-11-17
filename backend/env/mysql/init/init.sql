@@ -44,7 +44,9 @@ CREATE TABLE `user_credentials` (
   `last_login_at` datetime(6) DEFAULT NULL,
   `name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `password` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_credentials_name` (`name`),
+  UNIQUE KEY `uk_user_credentials_email` (`email`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -63,17 +65,18 @@ CREATE TABLE `user_roles` (
 
 INSERT INTO roles (name) VALUES ('EMPLOYEE'), ('ADMINISTRATOR'), ('CUSTOMER');
 
+-- Permission format: resource:action (same strings as Authorities.java and frontend/admin/src/constants/permissions.js)
 INSERT INTO permissions (name)
 VALUES
-    ('USER_VIEW'),
-    ('USER_CREATE'),
-    ('USER_UPDATE'),
-    ('USER_DELETE'),
+    ('user:read'),
+    ('user:create'),
+    ('user:update'),
+    ('user:delete'),
 
-    ('PRODUCT_VIEW'),
-    ('PRODUCT_CREATE'),
-    ('PRODUCT_UPDATE'),
-    ('PRODUCT_DELETE');
+    ('product:read'),
+    ('product:create'),
+    ('product:update'),
+    ('product:delete');
 
 
 -- *** Gán permission cho role
@@ -92,10 +95,10 @@ VALUES
  FROM roles r
  JOIN permissions p
      ON p.name IN (
-         'PRODUCT_VIEW',
-         'PRODUCT_CREATE',
-         'PRODUCT_UPDATE',
-         'PRODUCT_DELETE'
+         'product:read',
+         'product:create',
+         'product:update',
+         'product:delete'
      )
  WHERE r.name = 'EMPLOYEE';
 

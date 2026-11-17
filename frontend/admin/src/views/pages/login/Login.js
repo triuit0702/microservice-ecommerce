@@ -16,46 +16,47 @@ import {
 import CIcon from '@coreui/icons-react'
 import { cilLockLocked, cilUser } from '@coreui/icons'
 
-import { serviceLogin } from '../../../services/AuthService'
+import { serviceLogin, serviceLogout } from '../../../services/AuthService'
 import { useDispatch } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
+import { isStaff } from '../../../constants/permissions'
+import { useToast } from '../../../contexts/ToastContext'
 
 const Login = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
+  const { showToast } = useToast()
 
-  const [userName, setUserName] = useState('');
-  const [password, setPasword] = useState('');
   const [formLogin, setFormLogin] = useState({
     username: '',
     password: ''
   })
 
-
-
-  // login
+  // login: JWT is set by the backend in httpOnly cookies, the frontend never stores a token
   const login = async (e) => {
-
     e.preventDefault();
-    let res = await serviceLogin(formLogin);
-    let data = res.data.data
-
-    // 🔑 lưu JWT
-    localStorage.setItem('token', data.token)
-
-    let userDetail = {
-      id: data.id,
-      userName: formLogin.username,
-      token: data.token,
-      permissions: data.permissions
+    let user
+    try {
+      const res = await serviceLogin(formLogin);
+      user = res.data.data
+    } catch (error) {
+      if (error.response?.status === 401) {
+        showToast('Sai tên đăng nhập hoặc mật khẩu', 'danger')
+      }
+      return
     }
 
+    // the admin app is for staff accounts only
+    if (!isStaff(user)) {
+      await serviceLogout().catch(() => {})
+      showToast('Tài khoản không có quyền truy cập trang quản trị', 'danger')
+      return
+    }
 
     dispatch({
       type: 'LOGIN_SUCCESS',
-      payload: userDetail,
+      payload: user,
     })
-    // 👉 vào trang chính
     navigate("/");
   }
 

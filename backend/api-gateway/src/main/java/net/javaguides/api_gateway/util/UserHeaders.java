@@ -1,5 +1,7 @@
 package net.javaguides.api_gateway.util;
 
+import java.util.List;
+
 /**
  * Headers the gateway sets for downstream services after validating the JWT.
  * Downstream services trust them, so clients must never be able to send them.
@@ -7,6 +9,9 @@ package net.javaguides.api_gateway.util;
 public final class UserHeaders {
     public static final String USER_ID = "X-User-Id";
     public static final String USER_EMAIL = "X-User-Email";
+
+    /** Every header above. StripUserHeadersFilter removes all of them from client requests. */
+    public static final List<String> ALL = List.of(USER_ID, USER_EMAIL);
 
     private UserHeaders() {
     }

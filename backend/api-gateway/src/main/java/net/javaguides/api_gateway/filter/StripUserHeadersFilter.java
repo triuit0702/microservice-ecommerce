@@ -19,10 +19,7 @@ public class StripUserHeadersFilter implements GlobalFilter, Ordered {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest().mutate()
-                .headers(headers -> {
-                    headers.remove(UserHeaders.USER_ID);
-                    headers.remove(UserHeaders.USER_EMAIL);
-                })
+                .headers(headers -> UserHeaders.ALL.forEach(headers::remove))
                 .build();
         return chain.filter(exchange.mutate().request(request).build());
     }

@@ -3,17 +3,24 @@ package net.javaguides.identity_service.dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import net.javaguides.identity_service.entity.Role;
+import net.javaguides.identity_service.entity.UserCredential;
 
-import java.util.Set;
+import java.util.List;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 public class UserDto {
+    private Long id;
     private String name;
     private String email;
-    private String id;
-    private Set<RoleDto> roles;
-    private String roleId;
+    private List<String> roles;
+
+    public static UserDto from(UserCredential user) {
+        List<String> roles = user.getRoles().stream()
+                .map(role -> role.getName().name())
+                .sorted()
+                .toList();
+        return new UserDto(user.getId(), user.getName(), user.getEmail(), roles);
+    }
 }

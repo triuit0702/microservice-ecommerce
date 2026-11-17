@@ -43,7 +43,6 @@ spring:
             - name: RoleBasedAccessFilter
               args:
                 requiredRoles: ADMINISTRATOR, EMPLOYEE
-                #requiredPermissions: MANAGE_PRODUCTS
 
 
         # Route cho Order Service - Đặt hàng
@@ -124,9 +123,14 @@ management:
   endpoints:
     web:
       exposure:
-        include: "*"
+        include: health,info
   tracing:
     sampling:
       probability: 1
 server:
   port: 9191
+
+# Secret must be the same as in identity-service; the default is for dev only
+jwt:
+  secret: ${JWT_SECRET:5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437}
+  issuer: identity-service

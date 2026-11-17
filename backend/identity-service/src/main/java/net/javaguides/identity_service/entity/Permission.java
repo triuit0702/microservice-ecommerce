@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import net.javaguides.identity_service.enums.EPermission;
 
 @Entity
 @Table(name = "permissions")

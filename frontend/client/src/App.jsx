@@ -10,6 +10,7 @@ const Home = React.lazy(() => import("./pages/Home"));
 const ProductDetail = React.lazy(() => import("./pages/ProductDetail"));
 const CartPage = React.lazy(() => import("./pages/CartPage"));
 const Login = React.lazy(() => import("./pages/Login"))
+const Register = React.lazy(() => import("./pages/Register"))
 const Checkout = React.lazy(() => import("./pages/Checkout"))
 const OrderDetail = React.lazy(() => import("./pages/OrderDetail"))
 const MyOrders = React.lazy(() => import("./pages/MyOrders"))
@@ -34,6 +35,7 @@ function App() {
 
 
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
 
           {/* <Route path="/cart" element={<CartPage />} />
