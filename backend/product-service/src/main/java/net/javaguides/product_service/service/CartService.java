@@ -164,7 +164,7 @@ public class CartService {
         // parse redis data
         List<CartItemDto> items = entries.entrySet().stream()
                 .map(e -> {
-                    // tách productId, variantId, color từ key
+                    // split productId, variantId, color from the key
                     String[] parts = e.getKey().toString().split(":");
                     String productId = parts[0];
                     Long variantId = Long.parseLong(parts[1]);
@@ -207,7 +207,7 @@ public class CartService {
 
     // TODO: 
     public int updateQuantity(AddCartRequestDto request) {
-        // dùng lua script để update quantity trong giỏ hàng
+        // Lua script updates the cart quantity atomically
         String key = buildKey(request.getUserId());
         String field = request.getProductId() + ":" + request.getVariantId();
 //        String luaScript = "local userId=KEYS[1]" +

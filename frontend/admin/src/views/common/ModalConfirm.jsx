@@ -19,7 +19,7 @@ const ModalConfirm = ({ visibleDelete, message, hideModalConfirm, deleteUser }) 
             alignment="center"
         >
             <CModalHeader>
-                <CModalTitle>Xác nhận xóa</CModalTitle>
+                <CModalTitle>Confirm delete</CModalTitle>
             </CModalHeader>
 
             <CModalBody>
@@ -31,14 +31,14 @@ const ModalConfirm = ({ visibleDelete, message, hideModalConfirm, deleteUser }) 
                     color="secondary"
                     onClick={() => hideModalConfirm()}
                 >
-                    Hủy
+                    Cancel
                 </CButton>
 
                 <CButton
                     color="danger"
                     onClick={handleConfirmDelete}
                 >
-                    Xóa
+                    Delete
                 </CButton>
             </CModalFooter>
         </CModal>

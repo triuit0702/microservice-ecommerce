@@ -13,15 +13,15 @@ const Page403 = () => {
             <h1 className="display-4 fw-bold">403</h1>
             <h4 className="mb-3">Forbidden</h4>
             <p className="text-muted mb-4">
-                Bạn không có quyền truy cập trang này.
+                You do not have permission to access this page.
             </p>
 
             <div className="d-flex gap-3">
                 <CButton color="primary" onClick={() => navigate("/")}>
-                    Về Dashboard
+                    Go to home
                 </CButton>
                 <CButton color="secondary" onClick={() => navigate(-1)}>
-                    Quay lại
+                    Go back
                 </CButton>
             </div>
         </div>

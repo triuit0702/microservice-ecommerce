@@ -9,8 +9,8 @@ const cartSlice = createSlice({
     initialState,
     reducers: {
         /**
-         * state : state hiện tại của cart
-         * còn action.payload : data truyền vào từ dispatch (Cái gì truyền vào addToCart(...) → nằm trong action.payload.)
+         * state: current cart state
+         * action.payload: the value passed to the action creator, e.g. addToCart(payload)
          * @param {*} state 
          * @param {*} action 
          */

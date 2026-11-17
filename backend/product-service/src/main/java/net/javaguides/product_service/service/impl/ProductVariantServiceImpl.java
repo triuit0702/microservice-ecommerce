@@ -66,7 +66,7 @@ public class ProductVariantServiceImpl implements ProductVariantService {
         ProductVariant variant = productVariantRepository.findById(variantId)
                 .orElseThrow(() -> new ResourceNotFoundException("ProductVariant not found"));
 
-        // Cập nhật các thuộc tính cơ bản
+        // update basic fields
         if (updateDTO.getPrice() != null) {
             variant.setPrice(updateDTO.getPrice());
         }
@@ -103,8 +103,8 @@ public class ProductVariantServiceImpl implements ProductVariantService {
     }
 
     /**
-     * Lưu danh sách ProductVariant vào cơ sở dữ liệu
-     * @param productVariants: Danh sách các ProductVariant cần lưu
+     * Save a list of ProductVariant
+     * @param productVariants variants to save
      */
     @Override
     public void saveAllListVariant(List<ProductVariant> productVariants) {
@@ -124,5 +124,5 @@ public class ProductVariantServiceImpl implements ProductVariantService {
         return variant;
     }
 
-    // Các phương thức CRUD khác như update, delete nếu cần
+    // other CRUD methods (update, delete) if needed
 }

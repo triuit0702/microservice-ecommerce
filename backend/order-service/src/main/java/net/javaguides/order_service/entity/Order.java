@@ -38,16 +38,16 @@ public class Order extends AbstractEntity {
 
     private Long userId;
 
-    // tổng tiền hàng
+    // items subtotal
     private BigDecimal subTotal;
 
-    // phí ship
+    // shipping fee
     private BigDecimal shippingFee;
 
-    // tổng thanh toán
+    // grand total
     private BigDecimal totalPrice;
 
-    // thông tin giao hàng: address, phone, receiver_name, email
+    // shipping info: address, phone, receiver_name, email
     @Embedded
     private ShippingInfo shippingInfo;
 

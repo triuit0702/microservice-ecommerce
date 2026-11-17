@@ -88,7 +88,7 @@ const VariantModal = ({ visible, onClose, serverErrors, onSave, variantData }) =
     }, [visible, variantData, reset])
 
 
-    // dùng hiển thị lỗi từ backend
+    // shows errors returned by the backend
     useEffect(() => {
         if (!visible) return
         if (!serverErrors) return
@@ -125,7 +125,7 @@ const VariantModal = ({ visible, onClose, serverErrors, onSave, variantData }) =
                 <CModalHeader>{variantData ? 'Edit Variant' : 'Add Variant'}</CModalHeader>
                 <CModalBody>
 
-                    {/* Hidden field để giữ id khi edit */}
+                    {/* hidden field keeps the id when editing */}
                     {variantData && (
                         <CFormInput
                             type="hidden"
@@ -133,7 +133,7 @@ const VariantModal = ({ visible, onClose, serverErrors, onSave, variantData }) =
                         />
                     )}
 
-                    {/* SKU là mã định danh DUY NHẤT cho từng sản phẩm / từng variant trong kho */}
+                    {/* SKU: unique stock code for each product variant */}
                     <FormInput
                         label="Sku"
                         name="sku"

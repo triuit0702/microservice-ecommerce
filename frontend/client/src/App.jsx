@@ -44,7 +44,7 @@ function App() {
           <Route path="/order-success" element={<OrderSuccess />} /> */}
 
 
-          {/* Cần login */}
+          {/* requires login */}
           <Route element={<ProtectedRoute />}>
 
             <Route path="/cart" element={<CartPage />} />

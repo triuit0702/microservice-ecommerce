@@ -24,7 +24,7 @@ export default function CartQuantitySelector({
 
         const cartInfo = {
             variantId: variantId,
-            quantity: value, // quantity khi click tăng hoac giảm
+            quantity: value, // quantity after clicking + or -
             productId: productId,
             userId: userId,
         }

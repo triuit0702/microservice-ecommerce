@@ -34,7 +34,7 @@ public class OutboxWriter {
                     .createdAt(Instant.now())
                     .build());
         } catch (JsonProcessingException e) {
-            throw new IllegalStateException(e);   // runtime để rollback cả đơn
+            throw new IllegalStateException(e);   // runtime exception so the whole order rolls back
         }
     }
 }

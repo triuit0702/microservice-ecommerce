@@ -40,9 +40,9 @@ import FullPageLoader from '../common/FullPageLoader';
 
 
 // const schema = z.object({
-//     email: z.string().email("Email không hợp lệ"),
-//     password: z.string().min(6, "Mật khẩu tối thiểu 6 ký tự"),
-//     username: z.string().min(3, "Username tối thiểu 3 ký tự"),
+//     email: z.string().email("Invalid email"),
+//     password: z.string().min(6, "Password must be at least 6 characters"),
+//     username: z.string().min(3, "Username must be at least 3 characters"),
 // });
 
 
@@ -124,7 +124,7 @@ const ProductForm = ({ visibleProductForm }) => {
         } catch (error) {
             let resError = error.response.data.error;
             const newVariantErrors = {}
-            // 🔥 1. Nếu backend trả lỗi theo field
+            // 1. backend returned field errors
             if (resError.details) {
 
 
@@ -146,7 +146,7 @@ const ProductForm = ({ visibleProductForm }) => {
                         }
 
                     } else {
-                        // lỗi của product
+                        // product errors
                         setError(field, {
                             type: "server",
                             message,
@@ -156,7 +156,7 @@ const ProductForm = ({ visibleProductForm }) => {
 
                 setVariantErrors(newVariantErrors)
 
-                // focus field lỗi đầu tiên
+                // focus the first invalid field
                 const firstField = Object.keys(resError.details)[0];
                 setFocus(firstField);
             }
@@ -281,7 +281,7 @@ const ProductForm = ({ visibleProductForm }) => {
                     console.log("VALIDATION FAIL:", errors);
                 }
             )}>
-                {/* ✅ Hiển thị lỗi ở đầu trang */}
+                {/* errors at the top of the page */}
 
 
                 {globalError && (

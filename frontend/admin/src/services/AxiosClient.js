@@ -67,7 +67,7 @@ axiosClient.interceptors.response.use(
         if (showToastGlobal) {
             if (status === 403) {
                 // logged in but missing permission: inform, do not redirect
-                showToastGlobal('Bạn không có quyền thực hiện thao tác này', 'danger')
+                showToastGlobal('You do not have permission to perform this action', 'danger')
             } else if (status === 400 || status === 404 || status === 409 || status >= 500 || !error.response) {
                 showToastGlobal(getErrorMessage(error), 'danger')
             }

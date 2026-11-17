@@ -28,9 +28,9 @@ const CategoryList = () => {
         // { id: "4", name: "Apple", parentId: "3", imageUrl: "" },
     ]);
 
-    // Giả lập load category từ server
+    // load categories from the server
     useEffect(() => {
-        // TODO: fetch từ API backend
+        // TODO: fetch from the backend API
         // setCategories([
         //     { id: "1", name: "Electronics", parentId: null },
         //     { id: "2", name: "Laptop", parentId: "1" },
@@ -43,13 +43,13 @@ const CategoryList = () => {
         })
     }, []);
 
-    // lấy tên parent
+    // parent name
     const getParentName = (parentId) => {
         const parent = categories.find((c) => c.id === parentId);
         return parent ? parent.name : "—";
     };
 
-    // render dạng cây nhưng trong table
+    // render as a tree inside the table
     const renderRows = (parentId = null, level = 0) => {
         return categories
             .filter((c) => c.parentId === parentId)

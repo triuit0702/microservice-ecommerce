@@ -36,7 +36,7 @@ export default function ModalUser({
 
     const [formData, setFormData] = useState(INIT_FORM_DATA)
 
-    // reset form khi modal mở hoặc đổi user (cập nhật state trong render thay vì useEffect)
+    // reset the form when the modal opens or the user changes (state update during render instead of useEffect)
     const [prevProps, setPrevProps] = useState({ visible, userDetail })
     if (prevProps.visible !== visible || prevProps.userDetail !== userDetail) {
         setPrevProps({ visible, userDetail })
@@ -60,9 +60,8 @@ export default function ModalUser({
 
     return (
 
-        // dùng size xl thì bự hơn
         <CModal visible={visible} onClose={onClose} size="lg">
-            <CModalHeader>{editingUser ? 'Sửa User' : 'Thêm User'}</CModalHeader>
+            <CModalHeader>{editingUser ? 'Edit User' : 'Add User'}</CModalHeader>
             <CModalBody>
                 <CFormInput
                     name="name"
@@ -80,7 +79,7 @@ export default function ModalUser({
                     className="mb-3"
                 />
 
-                {/* password chỉ nhập khi tạo mới; sửa user không đổi password */}
+                {/* password only on create; editing does not change it */}
                 {!editingUser && (
                     <CFormInput
                         name="password"
@@ -109,10 +108,10 @@ export default function ModalUser({
 
             <CModalFooter>
                 <CButton color="secondary" onClick={onClose}>
-                    Hủy
+                    Cancel
                 </CButton>
                 <CButton color="primary" onClick={() => saveUser(formData, customerAccount)} >
-                    Lưu
+                    Save
                 </CButton>
             </CModalFooter>
         </CModal>

@@ -14,10 +14,10 @@ const changeState = (state = initialState, { type, ...rest }) => {
   }
 }
 
-// auth reducer mới
+// auth reducer
 const authInitialState = {
   user: null,
-  loading: true // loangding = true lúc start app
+  loading: true // true while the app checks the session on start
 }
 
 const authReducer = (state = authInitialState, action) => {

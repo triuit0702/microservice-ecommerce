@@ -57,7 +57,7 @@ public class AuthConfig {
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**").permitAll()
                         .requestMatchers("/api/v1/user/auth/me").authenticated()
-                        // admin app endpoints (users, roles, dashboard, audit logs): staff only,
+                        // admin app endpoints (users, roles, audit logs): staff only,
                         // fine-grained checks with @PreAuthorize on each method
                         .anyRequest().hasAnyRole("ADMINISTRATOR", "EMPLOYEE")
                 )

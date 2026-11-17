@@ -187,7 +187,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     /**
-     * Đăng ký xóa ảnh sau khi transaction commit thành công để tránh trường hợp xóa ảnh nhưng transaction rollback do lỗi DB
+     * Delete images only after the transaction commits, so a DB rollback never leaves the product without its images
      * @param oldPublicId
      */
     private void deleteImageAfterCommit(String oldPublicId) {
@@ -266,7 +266,7 @@ public class ProductServiceImpl implements ProductService {
 
         Page<Product> products = productRepository.findAll(spec, pageable);
 
-        // Sử dụng map() của Page để chuyển đổi từng Product thành ProductResponseDto
+        // map each Product to ProductResponseDto
         return products.map(product -> modelMapper.map(product, ProductResponseDto.class));
     }
 
@@ -327,7 +327,7 @@ public class ProductServiceImpl implements ProductService {
                 createVariants(variants, product);
             }
         } catch (Exception e) {
-            // 3. Rollback ảnh nếu DB fail
+            // 3. roll back images if the DB fails
            rollbackImage(uploadResponse); // TODO: If rollback fail , use schedule job to run clean
             log.error("Create product failed", e);
             throw e;
@@ -369,7 +369,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     /**
-     * Build Product entity từ ProductRequest DTO
+     * Build the Product entity from the ProductRequest DTO
      * @param req
      * @return
      */
@@ -407,7 +407,7 @@ public class ProductServiceImpl implements ProductService {
             ProductVariant variant = savedVariants.get(i);
             String oldPublicId = oldPublicIds.get(i);
 
-            // 3. Rename ảnh temp → permanent
+            // 3. rename temp images to permanent
             cloudinaryService.updateImageTags(
                     oldPublicId
             );

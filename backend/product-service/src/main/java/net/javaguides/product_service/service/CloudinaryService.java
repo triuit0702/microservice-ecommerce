@@ -36,24 +36,24 @@ public class CloudinaryService {
 
     public void uploadFile(MultipartFile file, String publicId) {
         try {
-            // Đọc ảnh từ MultipartFile thành BufferedImage
+            // read the MultipartFile into a BufferedImage
             BufferedImage originalImage = ImageIO.read(file.getInputStream());
 
-            // Resize ảnh, ví dụ resize width về 800px (giữ nguyên tỷ lệ)
+            // resize to 800px width, keeping the aspect ratio
             BufferedImage resizedImage = Scalr.resize(originalImage, Scalr.Method.QUALITY, Scalr.Mode.AUTOMATIC, 800);
 
-            // Chuyển ảnh resized thành byte[]
+            // resized image to byte[]
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             ImageIO.write(resizedImage, "jpg", outputStream);
             byte[] resizedBytes = outputStream.toByteArray();
 
-            // Upload ảnh đã resize lên Cloudinary
+            // upload the resized image to Cloudinary
             Map uploadResult = cloudinary.uploader().upload(resizedBytes, ObjectUtils.asMap(
                     "public_id", publicId,
-                    "quality", "auto:good" // Sử dụng nén tự động với chất lượng tốt
+                    "quality", "auto:good" // automatic compression, good quality
             ));
 
-            // Tạo URL mà không chứa version để tiện lợi
+            // URL without the version segment
             String url = cloudinary.url().generate(uploadResult.get("public_id").toString());
 
             log.info("Uploaded file URL: {}", url);
@@ -143,7 +143,7 @@ public class CloudinaryService {
                     .build();
         } catch (Exception e) {
             log.error("Failed update  image: {}", publicId, e);
-            //  Phải throw để transaction rollback
+            // must throw so the transaction rolls back
             throw new RuntimeException("Upload image failed", e);
         }
 
@@ -181,7 +181,7 @@ public class CloudinaryService {
 
             log.info("JOB_START");
 
-            // mốc thời gian: ảnh cũ hơn 24h sẽ bị xoá
+            // cutoff: images older than 24h are deleted
             Instant cutoffTime = Instant.now().minus(24, ChronoUnit.HOURS);
             Map result = cloudinary.search().expression("folder:products/temp AND tags:unsaved")
                             .sortBy("created_at", "asc")

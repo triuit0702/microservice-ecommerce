@@ -1,11 +1,11 @@
 export const getErrorMessage = (error) => {
     if (!error?.response) {
-        return 'Không thể kết nối server'
+        return 'Cannot connect to the server'
     }
 
     const { status, data } = error.response
 
-    // Ưu tiên message từ backend
+    // prefer the backend message
     if (data?.message) {
         return data.message
     }
@@ -16,16 +16,16 @@ export const getErrorMessage = (error) => {
 
     switch (status) {
         case 400:
-            return 'Dữ liệu không hợp lệ'
+            return 'Invalid data'
         case 401:
-            return 'Bạn chưa đăng nhập'
+            return 'You are not logged in'
         case 403:
-            return 'Bạn không có quyền'
+            return 'You do not have permission'
         case 404:
-            return 'Không tìm thấy dữ liệu'
+            return 'Data not found'
         case 500:
-            return 'Lỗi hệ thống'
+            return 'System error'
         default:
-            return 'Có lỗi xảy ra'
+            return 'Something went wrong'
     }
 }

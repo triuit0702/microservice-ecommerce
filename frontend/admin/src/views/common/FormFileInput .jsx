@@ -35,7 +35,7 @@ const FormFileInput = ({
         const file = e.target.files[0];
 
         if (file) {
-            // tạo preview local
+            // local preview
             const reader = new FileReader();
             reader.onloadend = () => {
                 //setImageUrl(reader.result);
@@ -43,7 +43,7 @@ const FormFileInput = ({
             };
             reader.readAsDataURL(file);
 
-            // gọi upload function nếu có
+            // call the upload function if provided
             // if (onUpload) {
             //     onUpload(file);
             // }

@@ -27,7 +27,7 @@ public class OutboxEvent {
     private Long id;
 
     @Column(nullable = false, length = 64)
-    private String aggregateId;             // orderId, dùng làm key Kafka
+    private String aggregateId;             // orderId, used as the Kafka key
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String payload;

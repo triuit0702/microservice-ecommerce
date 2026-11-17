@@ -131,7 +131,7 @@ export default function Checkout() {
                 clearCart()
             )
 
-            // Thành công → xóa dữ liệu tạm
+            // success: clear temporary data
             sessionStorage.removeItem(CHECKOUT_FORM_KEY);
 
             // Order is PENDING here; the detail page polls until it is CONFIRMED / CANCELLED
@@ -143,13 +143,13 @@ export default function Checkout() {
             if (resError?.code === "ORDER_IN_PROGRESS") {
                 // Concurrent request with the same key is still being saved: retry with the SAME key
                 // returns that order instead of creating a new one
-                setGlobalError("Đơn hàng đang được xử lý, vui lòng bấm Đặt hàng lại sau giây lát.");
+                setGlobalError("Your order is still being processed. Please click Place order again in a moment.");
             } else if (resError?.code === "PRICE_CHANGED") {
                 // Price changed: show new prices and let the customer confirm again.
                 // The order content changed, so the next submit is a new checkout attempt (new key).
                 await loadCart();
                 idempotencyKeyRef.current = generateIdempotencyKey();
-                setGlobalError(`Giá sản phẩm đã thay đổi, giỏ hàng đã được cập nhật giá mới. Vui lòng kiểm tra lại và đặt hàng. (${resError?.message ?? ""})`);
+                setGlobalError(`Prices have changed and your cart now shows the new prices. Please review and place the order again. (${resError?.message ?? ""})`);
             } else if (resError?.code === "VALIDATION_FAILED") {
                 // Backend field errors: show under the matching input, the rest at the top
                 const fieldErrors = resError.details ?? {};
@@ -162,11 +162,11 @@ export default function Checkout() {
                     }
                 });
                 setGlobalError(otherErrors.length
-                    ? `Thông tin đặt hàng không hợp lệ: ${otherErrors.join(", ")}`
-                    : "Thông tin đặt hàng không hợp lệ, vui lòng kiểm tra lại");
+                    ? `Invalid order information: ${otherErrors.join(", ")}`
+                    : "Invalid order information, please check again");
             } else {
                 // Keep the same key so a retry never creates a duplicate order
-                setGlobalError(resError?.message ?? "Đặt hàng thất bại, vui lòng thử lại");
+                setGlobalError(resError?.message ?? "Could not place the order, please try again");
             }
         } finally {
             setSubmitting(false);
@@ -180,7 +180,7 @@ export default function Checkout() {
                 <Grid >
 
 
-                    {/* ✅ Hiển thị lỗi ở đầu trang */}
+                    {/* errors at the top of the page */}
                     {globalError && (
                         <Alert
                             severity="error"
@@ -190,26 +190,26 @@ export default function Checkout() {
                         </Alert>
                     )}
 
-                    {/* Shipping Info đặt lên đầu */}
+                    {/* shipping info first */}
                     <Grid >
                         <Paper sx={{ p: 2 }}>
-                            <Typography variant="h5">Thông tin giao hàng</Typography>
+                            <Typography variant="h5">Shipping information</Typography>
                             <CommonTextField
                                 name="address"
                                 control={control}
-                                label="Địa chỉ"
+                                label="Address"
                                 rules={{
-                                    validate: (v) => v?.trim() ? true : "Địa chỉ là bắt buộc",
-                                    maxLength: { value: 255, message: "Địa chỉ tối đa 255 ký tự" }
+                                    validate: (v) => v?.trim() ? true : "Address is required",
+                                    maxLength: { value: 255, message: "Address must be at most 255 characters" }
                                 }}
                             />
                             <CommonTextField
                                 name="phone"
                                 control={control}
-                                label="Số điện thoại"
+                                label="Phone number"
                                 rules={{
-                                    required: "Số điện thoại là bắt buộc",
-                                    pattern: { value: PHONE_PATTERN, message: "Số điện thoại gồm 8-15 chữ số" }
+                                    required: "Phone number is required",
+                                    pattern: { value: PHONE_PATTERN, message: "Phone number must have 8-15 digits" }
                                 }}
                             />
                             <CommonTextField
@@ -217,9 +217,9 @@ export default function Checkout() {
                                 control={control}
                                 label="Email"
                                 rules={{
-                                    required: "Email là bắt buộc",
-                                    pattern: { value: EMAIL_PATTERN, message: "Email không hợp lệ" },
-                                    maxLength: { value: 255, message: "Email tối đa 255 ký tự" }
+                                    required: "Email is required",
+                                    pattern: { value: EMAIL_PATTERN, message: "Invalid email" },
+                                    maxLength: { value: 255, message: "Email must be at most 255 characters" }
                                 }}
                             />
                         </Paper>
@@ -228,16 +228,16 @@ export default function Checkout() {
 
 
                         <Paper sx={{ mt: 2 }}>
-                            <Typography variant="h5">Giỏ hàng</Typography>
+                            <Typography variant="h5">Cart</Typography>
                             <Table>
                                 {/* header */}
                                 <TableHead>
                                     <TableRow sx={{ backgroundColor: "grey.100" }}>
-                                        <TableCell align="center" width="15%">Ảnh</TableCell>
-                                        <TableCell width="35%">Tên sản phẩm</TableCell>
-                                        <TableCell align="center" width="15%">Giá</TableCell>
-                                        <TableCell align="center" width="15%">Số lượng</TableCell>
-                                        <TableCell align="right" width="20%">Thành tiền</TableCell>
+                                        <TableCell align="center" width="15%">Image</TableCell>
+                                        <TableCell width="35%">Product</TableCell>
+                                        <TableCell align="center" width="15%">Price</TableCell>
+                                        <TableCell align="center" width="15%">Quantity</TableCell>
+                                        <TableCell align="right" width="20%">Total</TableCell>
                                     </TableRow>
                                 </TableHead>
 
@@ -295,16 +295,16 @@ export default function Checkout() {
 
                         {/* Payment Method */}
                         <Paper sx={{ p: 2, mt: 2 }}>
-                            <Typography variant="h5">Phương thức thanh toán</Typography>
+                            <Typography variant="h5">Payment method</Typography>
                             <Controller
                                 name="paymentMethod"
                                 control={control}
                                 render={({ field }) => (
                                     <RadioGroup {...field}>
-                                        <FormControlLabel value="COD" control={<Radio />} label="Thanh toán khi nhận hàng" />
+                                        <FormControlLabel value="COD" control={<Radio />} label="Cash on delivery" />
                                         {/* Not supported by backend yet */}
-                                        <FormControlLabel value="CARD" control={<Radio />} label="Thẻ tín dụng (sắp có)" disabled />
-                                        <FormControlLabel value="WALLET" control={<Radio />} label="Ví điện tử (sắp có)" disabled />
+                                        <FormControlLabel value="CARD" control={<Radio />} label="Credit card (coming soon)" disabled />
+                                        <FormControlLabel value="WALLET" control={<Radio />} label="E-wallet (coming soon)" disabled />
                                     </RadioGroup>
                                 )}
                             />
@@ -317,12 +317,12 @@ export default function Checkout() {
                 {/* Order Summary */}
                 <Grid sx={{ mt: 3, mb: 5 }} >
                     <Paper sx={{ p: 2 }}>
-                        <Typography variant="h5">Tóm tắt đơn hàng</Typography>
-                        <Typography>Tạm tính: ${totalPrice.toFixed(2)}</Typography>
-                        <Typography>Phí ship: ${SHIPPING_FEE}</Typography>
-                        <Typography>Tổng cộng: ${grandTotal.toFixed(2)} </Typography>
+                        <Typography variant="h5">Order summary</Typography>
+                        <Typography>Subtotal: ${totalPrice.toFixed(2)}</Typography>
+                        <Typography>Shipping: ${SHIPPING_FEE}</Typography>
+                        <Typography>Total: ${grandTotal.toFixed(2)} </Typography>
                         <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 2 }} disabled={submitting || items.length === 0}>
-                            {submitting ? "Đang xử lý..." : "Đặt hàng"}
+                            {submitting ? "Processing..." : "Place order"}
                         </Button>
                     </Paper>
                 </Grid>

@@ -129,7 +129,7 @@ export default function ProductDetail() {
 
         // call api add to cart 
         await addToCartService(newCart);
-        // update biểu tượng giỏ hàng
+        // update the cart badge
 
         dispatch(
             addToCart({ ...product, quantity: stock })

@@ -16,14 +16,14 @@ export default function Register() {
 
     const [errorMessage, setErrorMessage] = useState(null)
 
-    // backend luôn tạo tài khoản CUSTOMER, không gửi roleId
+    // the backend always creates a CUSTOMER account; no role is sent
     const onSubmit = async ({ name, email, password }) => {
         setErrorMessage(null)
         try {
             await serviceRegister({ name, email, password })
             navigate("/login", { replace: true, state: { registered: true } })
         } catch (error) {
-            setErrorMessage(getErrorMessage(error, "Đăng ký thất bại."))
+            setErrorMessage(getErrorMessage(error, "Registration failed."))
         }
     }
 
@@ -42,7 +42,7 @@ export default function Register() {
                     name="name"
                     label="Username"
                     control={control}
-                    rules={{ required: "Vui lòng nhập tên đăng nhập" }}
+                    rules={{ required: "Please enter a username" }}
                 />
 
                 <CommonTextField
@@ -50,8 +50,8 @@ export default function Register() {
                     label="Email"
                     control={control}
                     rules={{
-                        required: "Vui lòng nhập email",
-                        pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: "Email không hợp lệ" }
+                        required: "Please enter your email",
+                        pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: "Invalid email" }
                     }}
                 />
 
@@ -61,24 +61,24 @@ export default function Register() {
                     type="password"
                     control={control}
                     rules={{
-                        required: "Vui lòng nhập mật khẩu",
-                        minLength: { value: 6, message: "Mật khẩu tối thiểu 6 ký tự" }
+                        required: "Please enter a password",
+                        minLength: { value: 6, message: "Password must be at least 6 characters" }
                     }}
                 />
 
                 <CommonTextField
                     name="confirmPassword"
-                    label="Nhập lại password"
+                    label="Confirm password"
                     type="password"
                     control={control}
                     rules={{
-                        required: "Vui lòng nhập lại mật khẩu",
-                        validate: (value) => value === getValues("password") || "Mật khẩu không khớp"
+                        required: "Please confirm your password",
+                        validate: (value) => value === getValues("password") || "Passwords do not match"
                     }}
                 />
 
                 <Button variant="contained" type="submit" disabled={isSubmitting} sx={{ height: 40, mt: 1 }}>
-                    Đăng ký
+                    Register
                 </Button>
 
                 {errorMessage && (
@@ -88,8 +88,8 @@ export default function Register() {
                 )}
 
                 <Typography variant="body2" sx={{ textAlign: "center", mt: 1 }}>
-                    Đã có tài khoản?{" "}
-                    <Link component={RouterLink} to="/login">Đăng nhập</Link>
+                    Already have an account?{" "}
+                    <Link component={RouterLink} to="/login">Log in</Link>
                 </Typography>
             </Box>
         </form>

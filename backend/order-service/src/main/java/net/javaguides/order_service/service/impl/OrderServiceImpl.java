@@ -155,7 +155,7 @@ public class OrderServiceImpl implements OrderService {
         Order createdOrder = orderRepository.saveAndFlush(order);
         OrderMessageEvent orderMessageEvent = createOrderMessageEvent(createdOrder, req.getPaymentMethod(), email);
 
-        // ghi event vào outbox, cùng transaction với đơn hàng
+        // write the event to the outbox in the same transaction as the order
         outboxWriter.save(createdOrder.getOrderId(), orderMessageEvent);
 
         return toOrderDTO(createdOrder);

@@ -9,7 +9,7 @@ import java.util.Map;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ApiResponse<T> {
-    // Getters và Setters
+    // getters and setters
     private LocalDateTime timestamp  = LocalDateTime.now();
    // private String message;
     private T data;

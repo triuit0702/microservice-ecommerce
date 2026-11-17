@@ -15,8 +15,8 @@ spring:
           predicates:
             - Path=/api/v1/user/**
 
-        # Route cho Product Service - Giỏ hàng (mọi method, yêu cầu đăng nhập)
-        # Phải đặt TRƯỚC product-service-read / product-service-write vì gateway match route theo thứ tự
+        # Product Service - cart (all methods, login required)
+        # Must come BEFORE product-service-read / product-service-write: the gateway matches routes in order
         - id: product-cart
           uri: lb://PRODUCT-SERVICE
           predicates:
@@ -25,14 +25,14 @@ spring:
           filters:
             - name: AuthenticationFilter
 
-        # Route cho Product Service - Đọc dữ liệu
+        # Product Service - read
         - id: product-service-read
           uri: lb://PRODUCT-SERVICE
           predicates:
             - Path=/api/v1/product/**
             - Method=GET
 
-        # Route cho Product Service - Ghi dữ liệu
+        # Product Service - write
         - id: product-service-write
           uri: lb://PRODUCT-SERVICE
           predicates:
@@ -45,7 +45,7 @@ spring:
                 requiredRoles: ADMINISTRATOR, EMPLOYEE
 
 
-        # Route cho Order Service - Đặt hàng
+        # Order Service - place order
         - id: order-place
           uri: lb://ORDER-SERVICE
           predicates:
@@ -54,7 +54,7 @@ spring:
           filters:
             - name: AuthenticationFilter
 
-        # Route cho Order Service - Danh sách đơn hàng của user đang đăng nhập
+        # Order Service - orders of the logged-in user
         - id: order-my-orders
           uri: lb://ORDER-SERVICE
           predicates:
@@ -66,7 +66,7 @@ spring:
               args:
                 requiredRoles: CUSTOMER
 
-        # Route cho Order Service - Lấy đơn hàng theo ID (chỉ đơn của chính user)
+        # Order Service - order by ID (own orders only)
         - id: order-get-by-id
           uri: lb://ORDER-SERVICE
           predicates:
@@ -78,7 +78,7 @@ spring:
               args:
                 requiredRoles: CUSTOMER
 
-        # Route cho Order Service - Lấy tất cả đơn hàng
+        # Order Service - all orders
         - id: order-get-all
           uri: lb://ORDER-SERVICE
           predicates:

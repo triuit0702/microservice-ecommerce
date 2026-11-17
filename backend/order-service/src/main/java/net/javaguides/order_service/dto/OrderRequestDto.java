@@ -31,32 +31,32 @@ public class OrderRequestDto {
     @Pattern(regexp = "COD", message = "Unsupported payment method")
     private String paymentMethod;
 
-    // tổng tiền hàng (ignored, computed by the server)
+    // items subtotal (ignored, computed by the server)
     private BigDecimal subTotal;
 
-    // phí ship: compared with the server value, 409 if different
+    // shipping fee: compared with the server value, 409 if different
     private BigDecimal shippingFee;
 
-    // tổng thanh toán (ignored, computed by the server)
+    // grand total (ignored, computed by the server)
     private BigDecimal totalPrice;
 
-    // thông tin user đặt hàng
-    // địa chỉ
+    // customer shipping info
+    // address
     @NotBlank(message = "Address is required")
     @Size(max = 255, message = "Address must be at most 255 characters")
     private String address;
 
-    // số điện thoại: 8-15 digits, optional leading +
+    // phone: 8-15 digits, optional leading +
     @NotBlank(message = "Phone is required")
     @Pattern(regexp = "^\\+?[0-9]{8,15}$", message = "Phone must be 8-15 digits")
     private String phone;
 
-    // tên người nhận
+    // receiver name
     @NotBlank(message = "Receiver name is required")
     @Size(max = 100, message = "Receiver name must be at most 100 characters")
     private String receiverName;
 
-    // email người nhận
+    // receiver email
     @NotBlank(message = "Email is required")
     @Email(message = "Email is invalid")
     @Size(max = 255, message = "Email must be at most 255 characters")

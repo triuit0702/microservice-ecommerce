@@ -9,7 +9,7 @@ import { serviceLogin, serviceGoogleLogin } from "../services/AuthService";
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 const GOOGLE_GSI_SRC = "https://accounts.google.com/gsi/client"
 
-// logo Google nhiều màu (MUI chỉ có icon Google một màu)
+// multi-color Google logo (the MUI icon is single-color)
 const GoogleLogo = () => (
     <svg width="18" height="18" viewBox="0 0 48 48">
         <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
@@ -19,7 +19,7 @@ const GoogleLogo = () => (
     </svg>
 );
 
-// load script Google Identity Services một lần
+// load the Google Identity Services script once
 let gsiPromise = null
 const loadGoogleScript = () => {
     if (window.google?.accounts?.oauth2) return Promise.resolve()
@@ -31,7 +31,7 @@ const loadGoogleScript = () => {
             script.onload = resolve
             script.onerror = () => {
                 gsiPromise = null
-                reject(new Error("Không tải được Google script"))
+                reject(new Error("Could not load the Google script"))
             }
             document.head.appendChild(script)
         })
@@ -53,8 +53,8 @@ export default function Login() {
     const [errorMessage, setErrorMessage] = useState(null)
     const [googleLoading, setGoogleLoading] = useState(false)
 
-    // lưu thông tin user sau khi login thành công (dùng chung cho login thường và Google)
-    // JWT nằm trong cookie httpOnly do backend set, frontend không lưu token
+    // store the user after a successful login (password and Google)
+    // the JWT is in an httpOnly cookie set by the backend; the frontend never stores tokens
     const handleLoginSuccess = (data) => {
         dispatch({
             type: "LOGIN_SUCCESS",
@@ -75,15 +75,15 @@ export default function Login() {
             const res = await serviceLogin(formData)
             handleLoginSuccess(res.data.data)
         } catch (error) {
-            setErrorMessage(getErrorMessage(error, "Sai tên đăng nhập hoặc mật khẩu."))
+            setErrorMessage(getErrorMessage(error, "Invalid username or password."))
         }
     }
 
-    // mở popup Google (authorization code flow) rồi gửi code cho identity-service
+    // open the Google popup (authorization code flow), then send the code to identity-service
     const handleGoogleLogin = async () => {
         setErrorMessage(null)
         if (!GOOGLE_CLIENT_ID) {
-            setErrorMessage("Chưa cấu hình VITE_GOOGLE_CLIENT_ID.")
+            setErrorMessage("VITE_GOOGLE_CLIENT_ID is not configured.")
             return
         }
 
@@ -102,7 +102,7 @@ export default function Login() {
             ux_mode: "popup",
             callback: async (response) => {
                 if (response.error) {
-                    setErrorMessage("Đăng nhập Google thất bại.")
+                    setErrorMessage("Google login failed.")
                     setGoogleLoading(false)
                     return
                 }
@@ -110,12 +110,12 @@ export default function Login() {
                     const res = await serviceGoogleLogin(response.code)
                     handleLoginSuccess(res.data.data)
                 } catch (error) {
-                    setErrorMessage(getErrorMessage(error, "Đăng nhập Google thất bại."))
+                    setErrorMessage(getErrorMessage(error, "Google login failed."))
                 } finally {
                     setGoogleLoading(false)
                 }
             },
-            // user đóng popup hoặc popup bị chặn
+            // the user closed the popup or it was blocked
             error_callback: () => setGoogleLoading(false),
         })
         client.requestCode()
@@ -133,14 +133,14 @@ export default function Login() {
                 }}
             >
                 {location.state?.registered && (
-                    <Alert severity="success">Đăng ký thành công, vui lòng đăng nhập.</Alert>
+                    <Alert severity="success">Registration successful, please log in.</Alert>
                 )}
 
                 <CommonTextField
                     name="username"
-                    label="Email"
+                    label="Username"
                     control={control}
-                    rules={{ required: "Vui lòng nhập tên đăng nhập" }}
+                    rules={{ required: "Please enter your username" }}
                 />
 
                 <CommonTextField
@@ -148,14 +148,14 @@ export default function Login() {
                     label="Password"
                     type="password"
                     control={control}
-                    rules={{ required: "Vui lòng nhập mật khẩu" }}
+                    rules={{ required: "Please enter your password" }}
                 />
 
                 <Button variant="contained" type="submit" disabled={isSubmitting} sx={{ height: 40, mt: 1 }}>
                     Login
                 </Button>
 
-                <Divider sx={{ my: 1 }}>hoặc</Divider>
+                <Divider sx={{ my: 1 }}>or</Divider>
 
                 <Button
                     variant="outlined"
@@ -170,7 +170,7 @@ export default function Login() {
                         borderColor: "grey.400",
                     }}
                 >
-                    Đăng nhập bằng Google
+                    Sign in with Google
                 </Button>
 
                 {errorMessage && (
@@ -180,8 +180,8 @@ export default function Login() {
                 )}
 
                 <Typography variant="body2" sx={{ textAlign: "center", mt: 1 }}>
-                    Chưa có tài khoản?{" "}
-                    <Link component={RouterLink} to="/register">Đăng ký</Link>
+                    Don't have an account?{" "}
+                    <Link component={RouterLink} to="/register">Register</Link>
                 </Typography>
             </Box>
         </form>

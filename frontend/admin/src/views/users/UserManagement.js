@@ -57,7 +57,7 @@ export default function UserManagement() {
     const [roles, setRoles] = useState([]);
 
     const [searchParams, setSearchParams] = useSearchParams();
-    // Lấy page từ URL
+    // page from the URL
     const page = parseInt(searchParams.get("page") || "0", 10);
 
 
@@ -104,7 +104,7 @@ export default function UserManagement() {
         try {
             if (data.id === null) {
                 await serviceSaveUser({ name: data.name, email: data.email, password: data.password, roleCodes });
-                showToast('Tạo user mới thành công', 'success');
+                showToast('User created', 'success');
             } else {
                 // null keeps the current roles (customer accounts cannot change role)
                 await serviceUpdateUser(data.id, {
@@ -112,7 +112,7 @@ export default function UserManagement() {
                     email: data.email,
                     roleCodes: customerAccount ? null : roleCodes
                 });
-                showToast('Sửa user thành công', 'success');
+                showToast('User updated', 'success');
             }
         } catch {
             // error toast is shown by AxiosClient
@@ -140,7 +140,7 @@ export default function UserManagement() {
         loadUsers();
     }
 
-    // Hàm đổi page
+    // change page
     const handlePageChange = (newPage) => {
         setSearchParams({ page: newPage });
     };
@@ -152,7 +152,7 @@ export default function UserManagement() {
                 color="warning"
                 className="me-2"
                 onClick={() => openEdit(item)} >
-                Sửa
+                Edit
             </CButton>
         }
         return null;
@@ -166,7 +166,7 @@ export default function UserManagement() {
                 color="danger"
                 className="me-2"
                 onClick={() => confirmDelete(item.id)} >
-                Xóa
+                Delete
             </CButton>
         }
         return null;
@@ -176,7 +176,7 @@ export default function UserManagement() {
         <CCard>
             <ModalConfirm
                 visibleDelete={visibleDelete}
-                message="Bạn có chắc chắn muốn xóa user này không?"
+                message="Are you sure you want to delete this user?"
                 hideModalConfirm={() => {
                     setVisibleDelete(false);
                     setDeleteUserId(null)
@@ -193,11 +193,11 @@ export default function UserManagement() {
             />
 
             <CCardHeader className="d-flex justify-content-between align-items-center">
-                <strong>Quản lý User</strong>
+                <strong>User Management</strong>
                 {
                     hasPermission(userLogin, USER_CREATE) && (
                         <CButton color="primary" onClick={() => openAdd()}>
-                            Thêm User
+                            Add User
                         </CButton>
                     )
                 }
@@ -237,7 +237,7 @@ export default function UserManagement() {
                         ))) : (
                             <CTableRow>
                                 <CTableDataCell colSpan={4} className="text-center">
-                                    Không có sản phẩm
+                                    No users
                                 </CTableDataCell>
                             </CTableRow>
                         )

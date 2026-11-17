@@ -22,5 +22,5 @@ public class ProductSpecification {
                 criteriaBuilder.between(root.get("price"), minPrice, maxPrice);
     }
 
-    // Thêm các tiêu chí khác nếu cần
+    // add more criteria if needed
 }

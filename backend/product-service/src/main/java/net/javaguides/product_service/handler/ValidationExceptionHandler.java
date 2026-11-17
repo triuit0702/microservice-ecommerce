@@ -20,7 +20,7 @@ public class ValidationExceptionHandler {
                 errors.put(error.getField(), error.getDefaultMessage())
         );
 
-        // Tạo ApiResponse với lỗi
+        // build the error ApiResponse
         return new ResponseEntity<>(ApiResponse.error("validation exception handler error",errors), HttpStatus.BAD_REQUEST);
     }
 }

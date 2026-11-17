@@ -31,7 +31,7 @@ public class TempImageCleanupJob {
     }
 
     private void cleanupUnsavedImages(String trigger) {
-        // logic xoá ảnh temp ở đây
+        // temp image cleanup logic
         cloudinaryService.deleteTempImage(trigger);
     }
 }

@@ -13,6 +13,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AuditLogService {
 
+    private static final int MAX_LIMIT = 50;
+
     private final AuditLogRepository auditLogRepository;
 
     public void save(String username, String action, String resource) {
@@ -24,8 +26,10 @@ public class AuditLogService {
     }
 
     public List<AuditLog> getRecent(int limit) {
+        // cap the page size so a client cannot dump the whole table
+        int pageSize = Math.min(Math.max(limit, 1), MAX_LIMIT);
         return auditLogRepository
-                .findRecent(PageRequest.of(0, limit))
+                .findRecent(PageRequest.of(0, pageSize))
                 .getContent();
     }
 }

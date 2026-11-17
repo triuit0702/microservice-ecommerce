@@ -1,6 +1,5 @@
 package net.javaguides.identity_service.repository;
 
-import net.javaguides.identity_service.dto.LoginChartProjection;
 import net.javaguides.identity_service.entity.UserCredential;
 import net.javaguides.identity_service.enums.ERole;
 import org.springframework.data.domain.Page;
@@ -9,8 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 public interface UserCredentialRepository extends JpaRepository<UserCredential, Long> {
@@ -24,9 +21,6 @@ public interface UserCredentialRepository extends JpaRepository<UserCredential, 
     boolean existsByEmailAndIdNot(String email, Long id);
 
     Page<UserCredential> findByDelFlgFalse(Pageable pageable);
-
-    // count total user active
-    long countByDelFlgTrue();
 
     @Query("""
            SELECT COUNT(DISTINCT u.id)
@@ -63,33 +57,4 @@ public interface UserCredentialRepository extends JpaRepository<UserCredential, 
            WHERE u.email = :email AND u.delFlg = false
            """)
     Optional<UserCredential> findActiveByEmailWithPermissions(@Param("email") String email);
-
-    @Query("""
-      SELECT COUNT(u.id)
-      FROM UserCredential u
-      WHERE u.lastLoginAt >= :threshold
-    """)
-    long countOnlineUsers(@Param("threshold") LocalDateTime threshold);
-
-    @Query("""
-      SELECT DATE(u.lastLoginAt) as date, COUNT(u.id) as count
-      FROM UserCredential u
-      WHERE u.lastLoginAt >= :from
-      GROUP BY DATE(u.lastLoginAt)
-      ORDER BY DATE(u.lastLoginAt)
-    """)
-    List<LoginChartProjection> countLoginByDate(
-            @Param("from") LocalDateTime from
-    );
-
-    @Query("""
-      SELECT COUNT(u.id)
-      FROM UserCredential u
-      WHERE u.lastLoginAt >= :start
-        AND u.lastLoginAt < :end
-    """)
-    long countLoginToday(
-            @Param("start") LocalDateTime start,
-            @Param("end") LocalDateTime end
-    );
 }

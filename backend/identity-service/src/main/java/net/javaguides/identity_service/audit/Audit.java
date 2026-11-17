@@ -13,5 +13,5 @@ public @interface Audit {
 
     String resource() default ""; // user:{#id}, product:{#productId}
     Class<?> resourceClass() default void.class; // DTO class
-    String idField() default "id"; // tên field để lấy id
+    String idField() default "id"; // field name that holds the id
 }

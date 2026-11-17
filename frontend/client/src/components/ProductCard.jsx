@@ -21,7 +21,7 @@ export default function ProductCard({ product }) {
                 <Typography
                     variant="subtitle1"
                     sx={{
-                        width: "100%",            // 👈 thêm
+                        width: "100%",            
                         maxWidth: "100%",
                         display: "-webkit-box",
                         WebkitLineClamp: 2,

@@ -25,7 +25,7 @@ public class ProductVariant {
 
 
     private BigDecimal discount;
-// SKU là mã định danh DUY NHẤT cho từng sản phẩm / từng variant trong kho
+// SKU: unique stock code for each product variant
     @Column(nullable = false, unique = true)
     private String sku;
 

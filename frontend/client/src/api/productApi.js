@@ -1,6 +1,6 @@
 import axios from "axios";
 
-// 👉 Đổi thành API Gateway của bạn
+// API gateway URL
 //const API_BASE = "https://fakestoreapi.com";
 
 const API_BASE = "http://localhost:9191/api/v1/product/products";

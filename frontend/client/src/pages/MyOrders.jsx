@@ -33,7 +33,7 @@ export default function MyOrders() {
                 if (cancelled) return;
                 setResult({
                     page, orders: [], totalPages: 0,
-                    error: err.response?.data?.error?.message ?? "Không tải được danh sách đơn hàng"
+                    error: err.response?.data?.error?.message ?? "Could not load your orders"
                 });
             });
 
@@ -44,7 +44,7 @@ export default function MyOrders() {
 
     return (
         <Container sx={{ mb: 10 }}>
-            <Typography variant="h5" sx={{ mb: 2 }}>Đơn hàng của tôi</Typography>
+            <Typography variant="h5" sx={{ mb: 2 }}>My orders</Typography>
 
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
@@ -54,19 +54,19 @@ export default function MyOrders() {
                 </Box>
             ) : orders.length === 0 && !error ? (
                 <Paper sx={{ p: 4, textAlign: "center" }}>
-                    <Typography sx={{ mb: 2 }}>Bạn chưa có đơn hàng nào.</Typography>
-                    <Button variant="contained" onClick={() => navigate("/")}>Mua sắm ngay</Button>
+                    <Typography sx={{ mb: 2 }}>You have no orders yet.</Typography>
+                    <Button variant="contained" onClick={() => navigate("/")}>Start shopping</Button>
                 </Paper>
             ) : (
                 <Paper sx={{ overflowX: "auto" }}>
                     <Table>
                         <TableHead>
                             <TableRow sx={{ backgroundColor: "grey.100" }}>
-                                <TableCell>Mã đơn</TableCell>
-                                <TableCell>Ngày đặt</TableCell>
-                                <TableCell align="center">Số sản phẩm</TableCell>
-                                <TableCell align="right">Tổng tiền</TableCell>
-                                <TableCell align="center">Trạng thái</TableCell>
+                                <TableCell>Order ID</TableCell>
+                                <TableCell>Date</TableCell>
+                                <TableCell align="center">Items</TableCell>
+                                <TableCell align="right">Total</TableCell>
+                                <TableCell align="center">Status</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>

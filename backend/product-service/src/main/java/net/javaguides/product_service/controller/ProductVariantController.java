@@ -26,7 +26,7 @@ public class ProductVariantController {
     private final ModelMapper modelMapper;
 
     /**
-     * Thêm một biến thể mới cho sản phẩm
+     * Add a new variant to a product
      */
     @PostMapping("{productId}")
     public ResponseEntity<ProductVariantResponseDto> createVariant(
@@ -42,7 +42,7 @@ public class ProductVariantController {
     }
 
     /**
-     * Lấy tất cả biến thể của một sản phẩm
+     * Get all variants of a product
      */
     @GetMapping("{productId}")
     public ResponseEntity<List<ProductVariantResponseDto>> getVariants(@PathVariable String productId) {
@@ -67,5 +67,5 @@ public class ProductVariantController {
 
     }
 
-    // Các API khác như update, delete nếu cần
+    // other APIs (update, delete) if needed
 }

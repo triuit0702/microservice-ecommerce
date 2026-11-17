@@ -25,7 +25,7 @@ export default function Navbar() {
     const dispatch = useDispatch();
 
     const location = useLocation();
-    // Ẩn nút nếu đang ở /cart, hiện lại khi ra trang khác
+    // hide the button on /cart, show it again on other pages
     const hideCart = location.pathname === "/cart";
 
     const totalQuantity = items.reduce(
@@ -60,7 +60,7 @@ export default function Navbar() {
 
     useEffect(() => {
         if (user?.id) {
-            // skipAuthRedirect: vào trang chủ không bị đá về /login khi token hết hạn
+            // skipAuthRedirect: the home page must not redirect to /login when the token expired
             getCartByUserId(user.id, { skipAuthRedirect: true }).then((response) => {
 
                 dispatch(clearCart());
@@ -70,7 +70,7 @@ export default function Navbar() {
                 )
             }).catch((err) => {
                 if (err.response?.status === 401) {
-                    // Token hết hạn / token cũ: xoá user đã persist để Navbar hiện nút Login
+                    // expired or stale token: clear the persisted user so the Navbar shows Login
                     dispatch({ type: 'LOGOUT' });
                     dispatch(clearCart());
                     return;
@@ -101,7 +101,7 @@ export default function Navbar() {
                             <IconButton color="inherit"
                                 sx={{
                                     "&:hover": {
-                                        backgroundColor: "rgba(0,0,0,0.1)" // màu nền đậm hơn khi hover
+                                        backgroundColor: "rgba(0,0,0,0.1)" // darker background on hover
                                     }
                                 }}
                                 onClick={handleLogin}>
@@ -144,14 +144,14 @@ export default function Navbar() {
                                 >
 
                                     <MenuItem >
-                                        xin chào: {user.userName}
+                                        Hello, {user.userName}
                                     </MenuItem>
                                     <MenuItem onClick={() => navigate("/profile")}>
                                         Profile
                                     </MenuItem>
                                     <MenuItem onClick={() => { handleCloseMenu(); navigate("/orders"); }}>
                                         <ReceiptLongIcon sx={{ mr: 1 }} />
-                                        Đơn hàng của tôi
+                                        My orders
                                     </MenuItem>
 
 

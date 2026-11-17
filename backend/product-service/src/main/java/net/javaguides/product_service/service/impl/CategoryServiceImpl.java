@@ -94,14 +94,14 @@ public class CategoryServiceImpl implements CategoryService {
         return categoryRepository.findByIdIn(idList);
     }
 
-    // Hàm chuyển đổi từ entity sang DTO
+    // entity to DTO
     private CategoryResponseDto convertToDto(Category category) {
         CategoryResponseDto dto = new CategoryResponseDto();
         dto.setId(category.getId());
         dto.setName(category.getName());
         dto.setParentId(category.getParent() != null ? category.getParent().getId() : null);
 
-        // Đệ quy chuyển đổi danh mục con
+        // convert child categories recursively
         if (category.getChildren() != null && !category.getChildren().isEmpty()) {
             List<CategoryResponseDto> childDtos = category.getChildren().stream()
                     .map(this::convertToDto)

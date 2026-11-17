@@ -5,7 +5,7 @@ import 'core-js'
 
 import App from './App'
 import store from './store'
-import "./i18n"; // 🔥 IMPORT 1 LẦN DUY NHẤT
+import "./i18n"; // import once
 
 
 

@@ -26,7 +26,7 @@ const ProductList = () => {
 
     // page
     const [searchParams, setSearchParams] = useSearchParams();
-    // Lấy page từ URL
+    // page from the URL
     const page = parseInt(searchParams.get("page") || "0", 10);
 
 
@@ -67,13 +67,13 @@ const ProductList = () => {
 
     // delete product
     const handleDelete = async (id) => {
-        if (window.confirm("Bạn có chắc muốn xóa sản phẩm này?")) {
+        if (window.confirm("Are you sure you want to delete this product?")) {
             await deleteProduct(id);
             fetchProducts();
         }
     };
 
-    // Hàm đổi page
+    // change page
     const handlePageChange = (newPage) => {
         setSearchParams({ page: newPage });
     };
@@ -129,7 +129,7 @@ const ProductList = () => {
                         ))) : (
                             <CTableRow>
                                 <CTableDataCell colSpan={4} className="text-center">
-                                    Không có sản phẩm
+                                    No products
                                 </CTableDataCell>
                             </CTableRow>
                         )

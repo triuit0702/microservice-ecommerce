@@ -22,8 +22,8 @@ const resources = {
 
 i18n.use(initReactI18next).init({
     resources,
-    lng: localStorage.getItem("lang") || "vi",
-    fallbackLng: "vi",
+    lng: localStorage.getItem("lang") || "en",
+    fallbackLng: "en",
     ns: ["common", "user"],
     defaultNS: "common",
     interpolation: {

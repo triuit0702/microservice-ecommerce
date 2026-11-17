@@ -17,7 +17,7 @@ import {
 const POLL_INTERVAL_MS = 1500;
 const POLL_TIMEOUT_MS = 30000;
 
-const STEPS = ["Đã đặt hàng", "Đã xác nhận", "Đang xử lý", "Hoàn thành"];
+const STEPS = ["Placed", "Confirmed", "Processing", "Completed"];
 const STEP_INDEX = { PENDING: 0, CONFIRMED: 1, PROCESSING: 2, COMPLETED: 3 };
 
 // key={id}: opening another order remounts the view, so its state starts fresh
@@ -60,8 +60,8 @@ function OrderDetailView({ id }) {
                 if (cancelled) return;
                 const status = err.response?.status;
                 setError(status === 404
-                    ? "Không tìm thấy đơn hàng"
-                    : err.response?.data?.error?.message ?? "Không tải được đơn hàng, vui lòng thử lại");
+                    ? "Order not found"
+                    : err.response?.data?.error?.message ?? "Could not load the order, please try again");
             }
         };
 
@@ -110,7 +110,7 @@ function OrderDetailView({ id }) {
         return (
             <Container sx={{ mt: 4 }}>
                 <Alert severity="error">{error}</Alert>
-                <Button sx={{ mt: 2 }} variant="outlined" onClick={() => navigate("/orders")}>Đơn hàng của tôi</Button>
+                <Button sx={{ mt: 2 }} variant="outlined" onClick={() => navigate("/orders")}>My orders</Button>
             </Container>
         );
     }
@@ -130,25 +130,25 @@ function OrderDetailView({ id }) {
             {/* Status banner */}
             {status === "PENDING" && !timedOut && (
                 <Alert severity="info" icon={<CircularProgress size={20} />}>
-                    Đơn hàng đã được ghi nhận, đang kiểm tra tồn kho...
+                    Your order has been received, checking stock...
                 </Alert>
             )}
             {status === "PENDING" && timedOut && (
                 <Alert severity="warning">
-                    Đơn hàng vẫn đang được xử lý. Bạn có thể xem lại trạng thái trong mục "Đơn hàng của tôi".
+                    Your order is still being processed. You can check its status later in "My orders".
                 </Alert>
             )}
             {status === "CONFIRMED" && (
                 <Alert severity="success" icon={<CheckCircleOutlineIcon />}>
-                    Đặt hàng thành công! Đơn hàng của bạn đã được xác nhận.
+                    Order placed! Your order has been confirmed.
                 </Alert>
             )}
             {status === "CANCELLED" && (
                 <Alert
                     severity="error"
-                    action={<Button color="inherit" size="small" onClick={() => navigate("/cart")}>Về giỏ hàng</Button>}
+                    action={<Button color="inherit" size="small" onClick={() => navigate("/cart")}>Back to cart</Button>}
                 >
-                    Đơn hàng đã bị hủy: {getCancelReason(order.cancelReason)}. Sản phẩm vẫn còn trong giỏ hàng của bạn.
+                    Your order was cancelled: {getCancelReason(order.cancelReason)}. The items are still in your cart.
                 </Alert>
             )}
 
@@ -156,8 +156,8 @@ function OrderDetailView({ id }) {
             <Paper sx={{ p: 2, mt: 2 }}>
                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1 }}>
                     <Box>
-                        <Typography variant="h5">Đơn hàng #{shortOrderId(order.orderId)}</Typography>
-                        <Typography variant="body2" color="text.secondary">Đặt lúc {formatDate(order.createdAt)}</Typography>
+                        <Typography variant="h5">Order #{shortOrderId(order.orderId)}</Typography>
+                        <Typography variant="body2" color="text.secondary">Placed on {formatDate(order.createdAt)}</Typography>
                     </Box>
                     <Chip label={statusInfo.label} color={statusInfo.color} />
                 </Box>
@@ -175,10 +175,10 @@ function OrderDetailView({ id }) {
                 {/* Shipping info */}
                 <Grid size={{ xs: 12, md: 6 }}>
                     <Paper sx={{ p: 2, height: "100%" }}>
-                        <Typography variant="h6">Thông tin giao hàng</Typography>
-                        <Typography>Người nhận: {order.receiverName ?? "-"}</Typography>
-                        <Typography>Địa chỉ: {order.address ?? "-"}</Typography>
-                        <Typography>Số điện thoại: {order.phone ?? "-"}</Typography>
+                        <Typography variant="h6">Shipping information</Typography>
+                        <Typography>Receiver: {order.receiverName ?? "-"}</Typography>
+                        <Typography>Address: {order.address ?? "-"}</Typography>
+                        <Typography>Phone: {order.phone ?? "-"}</Typography>
                         <Typography>Email: {order.email ?? "-"}</Typography>
                     </Paper>
                 </Grid>
@@ -186,27 +186,27 @@ function OrderDetailView({ id }) {
                 {/* Summary */}
                 <Grid size={{ xs: 12, md: 6 }}>
                     <Paper sx={{ p: 2, height: "100%" }}>
-                        <Typography variant="h6">Thanh toán</Typography>
-                        <Typography>Phương thức: {getPaymentLabel(order.paymentMethod)}</Typography>
+                        <Typography variant="h6">Payment</Typography>
+                        <Typography>Method: {getPaymentLabel(order.paymentMethod)}</Typography>
                         <Divider sx={{ my: 1 }} />
-                        <Typography>Tạm tính: {formatMoney(order.subTotal)}</Typography>
-                        <Typography>Phí ship: {formatMoney(order.shippingFee)}</Typography>
-                        <Typography fontWeight="bold">Tổng cộng: {formatMoney(order.totalPrice)}</Typography>
+                        <Typography>Subtotal: {formatMoney(order.subTotal)}</Typography>
+                        <Typography>Shipping: {formatMoney(order.shippingFee)}</Typography>
+                        <Typography fontWeight="bold">Total: {formatMoney(order.totalPrice)}</Typography>
                     </Paper>
                 </Grid>
             </Grid>
 
             {/* Items */}
             <Paper sx={{ mt: 2, overflowX: "auto" }}>
-                <Typography variant="h6" sx={{ p: 2 }}>Sản phẩm</Typography>
+                <Typography variant="h6" sx={{ p: 2 }}>Items</Typography>
                 <Table>
                     <TableHead>
                         <TableRow sx={{ backgroundColor: "grey.100" }}>
-                            <TableCell align="center" width="15%">Ảnh</TableCell>
-                            <TableCell width="35%">Tên sản phẩm</TableCell>
-                            <TableCell align="center" width="15%">Giá</TableCell>
-                            <TableCell align="center" width="15%">Số lượng</TableCell>
-                            <TableCell align="right" width="20%">Thành tiền</TableCell>
+                            <TableCell align="center" width="15%">Image</TableCell>
+                            <TableCell width="35%">Product</TableCell>
+                            <TableCell align="center" width="15%">Price</TableCell>
+                            <TableCell align="center" width="15%">Quantity</TableCell>
+                            <TableCell align="right" width="20%">Total</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -241,8 +241,8 @@ function OrderDetailView({ id }) {
             </Paper>
 
             <Box sx={{ display: "flex", gap: 2, mt: 3 }}>
-                <Button variant="outlined" onClick={() => navigate("/orders")}>Đơn hàng của tôi</Button>
-                <Button variant="contained" onClick={() => navigate("/")}>Tiếp tục mua sắm</Button>
+                <Button variant="outlined" onClick={() => navigate("/orders")}>My orders</Button>
+                <Button variant="contained" onClick={() => navigate("/")}>Continue shopping</Button>
             </Box>
         </Container>
     );

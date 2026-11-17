@@ -41,7 +41,7 @@ const Login = () => {
       user = res.data.data
     } catch (error) {
       if (error.response?.status === 401) {
-        showToast('Sai tên đăng nhập hoặc mật khẩu', 'danger')
+        showToast('Invalid username or password', 'danger')
       }
       return
     }
@@ -49,7 +49,7 @@ const Login = () => {
     // the admin app is for staff accounts only
     if (!isStaff(user)) {
       await serviceLogout().catch(() => {})
-      showToast('Tài khoản không có quyền truy cập trang quản trị', 'danger')
+      showToast('This account cannot access the admin site', 'danger')
       return
     }
 

@@ -9,5 +9,5 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class CreateCategoryRequestDto {
     private String name;
-    private String parentId; // Có thể null nếu là danh mục gốc
+    private String parentId; // null for a root category
 }

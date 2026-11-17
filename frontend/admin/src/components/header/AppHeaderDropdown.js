@@ -55,7 +55,7 @@ const AppHeaderDropdown = () => {
           {/* <CAvatar color="primary" className="me-2">
             {userLogin?.username?.charAt(0).toUpperCase()}
           </CAvatar> */}
-          <span className="me-2 ">Xin chào: {userLogin?.userName}</span>
+          <span className="me-2 ">Hello, {userLogin?.userName}</span>
         </CDropdownItem>
 
 

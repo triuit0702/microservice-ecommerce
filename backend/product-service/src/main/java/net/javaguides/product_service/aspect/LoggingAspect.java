@@ -15,13 +15,13 @@ public class LoggingAspect {
 
     private final Logger log = LoggerFactory.getLogger(this.getClass());
 
-    // Ghi log trước khi các method trong các service được thực thi
+    // log before service methods run
     @Before("execution(* net.javaguides.product_service.service.impl.*.*(..))")
     public void logBeforeMethod(JoinPoint joinPoint) {
         log.info("Starting method: {}", joinPoint.getSignature().toShortString());
     }
 
-    // Ghi log sau khi các method hoàn thành
+    // log after service methods complete
     @AfterReturning(
             pointcut = "execution(* net.javaguides.product_service.service.impl.*.*(..))",
             returning = "result")
@@ -31,7 +31,7 @@ public class LoggingAspect {
                 result);
     }
 
-    // Ghi log khi có exception
+    // log when an exception is thrown
     @AfterThrowing(
             pointcut = "execution(* net.javaguides.product_service.service.impl.*.*(..))",
             throwing = "error")
