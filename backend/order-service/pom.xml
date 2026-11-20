@@ -109,7 +109,7 @@
 			<artifactId>spring-cloud-starter-openfeign</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>io.github.haphong463</groupId>
+			<groupId>io.github.triuit0702</groupId>
 			<artifactId>common-lib</artifactId>
 			<version>1.0.12</version>
 		</dependency>

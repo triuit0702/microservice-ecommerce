@@ -1,4 +1,9 @@
-version: '3.2'
+# Infrastructure only (MySQL, Redis, Kafka, Kafka UI). Single source of truth:
+# backend/docker-compose.yml includes this file for the full stack.
+# Dev:  cd backend && docker compose -f env/docker-compose-dev.yml up -d
+
+# Same project name as docker-compose.yml, so both ways share (and reuse) the same infra containers
+name: ecommerce
 
 networks:
   shop-network:
@@ -21,6 +26,12 @@ services:
       '--collation-server=utf8mb4_unicode_ci',
       '--skip-character-set-client-handshake'  # force utf8mb4 on all connections
     ]
+    healthcheck:
+      # TCP check: only passes once init.sql has finished and the real server is up
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p123456"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
     networks:
       - shop-network
 
@@ -30,6 +41,11 @@ services:
     image: redis:latest
     ports:
       - "6319:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     networks:
         - shop-network
 
@@ -94,6 +110,6 @@ services:
       test: [ "CMD", "kafka-topics.sh", "--list", "--bootstrap-server", "localhost:9092" ]
       interval: 5s
       timeout: 10s
-      retries: 10
+      retries: 20
     networks:
       - shop-network

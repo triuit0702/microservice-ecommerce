@@ -1,0 +1,117 @@
+# Full stack: infrastructure + all backend services, started with one command:
+#   cd backend && docker compose up --build -d
+# For day-to-day development run only env/docker-compose-dev.yml (infra) and start services with mvnw.
+# Infra is defined once in env/docker-compose-dev.yml and included below.
+# Do not run both at the same time: they use the same host ports and container names.
+
+name: ecommerce
+
+x-service: &service
+  build:
+    context: .
+    dockerfile: Dockerfile
+  restart: on-failure
+  networks: [shop-network]
+
+x-common-env: &common-env
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-registry:8761/eureka/
+  # Register with the container IP so the gateway and Feign can reach each instance
+  EUREKA_INSTANCE_PREFERIPADDRESS: "true"
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka1:9092
+  # Services use both property styles (spring.redis.* and spring.data.redis.*)
+  SPRING_REDIS_HOST: redis
+  SPRING_REDIS_PORT: "6379"
+  SPRING_DATA_REDIS_HOST: redis
+  SPRING_DATA_REDIS_PORT: "6379"
+
+# Infrastructure (MySQL, Redis, Kafka, Kafka UI, shop-network) lives in one place
+include:
+  - env/docker-compose-dev.yml
+
+services:
+  # ---------- Backend services ----------
+  service-registry:
+    <<: *service
+    build:
+      context: .
+      args: { SERVICE: service-registry }
+    image: ecommerce/service-registry
+    ports:
+      - "8761:8761"
+
+  api-gateway:
+    <<: *service
+    build:
+      context: .
+      args: { SERVICE: api-gateway }
+    image: ecommerce/api-gateway
+    ports:
+      - "9191:9191"
+    environment:
+      <<: *common-env
+    depends_on:
+      - service-registry
+
+  identity-service:
+    <<: *service
+    build:
+      context: .
+      args: { SERVICE: identity-service }
+    image: ecommerce/identity-service
+    ports:
+      - "9898:9898"
+    environment:
+      <<: *common-env
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/user_db
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+    depends_on:
+      service-registry:
+        condition: service_started
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  product-service:
+    <<: *service
+    build:
+      context: .
+      args: { SERVICE: product-service }
+    image: ecommerce/product-service
+    ports:
+      - "8084:8084"
+    environment:
+      <<: *common-env
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/product_db
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+    depends_on:
+      service-registry:
+        condition: service_started
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka1:
+        condition: service_healthy
+
+  order-service:
+    <<: *service
+    build:
+      context: .
+      args: { SERVICE: order-service }
+    image: ecommerce/order-service
+    ports:
+      - "9195:9195"
+    environment:
+      <<: *common-env
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/order_db
+    depends_on:
+      service-registry:
+        condition: service_started
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka1:
+        condition: service_healthy

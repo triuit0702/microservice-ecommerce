@@ -1,0 +1,15 @@
+**/target
+**/.idea
+**/*.iml
+**/.mvn
+**/mvnw
+**/mvnw.cmd
+**/logs
+**/*.log
+env/data
+.git
+
+# Never bake local secrets into images; pass them as environment variables instead
+**/application-local.properties
+**/application-local.yml
+**/application_*.yml

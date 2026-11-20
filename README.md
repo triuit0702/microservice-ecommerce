@@ -100,7 +100,9 @@ microservice-ecommerce-clone/
 │   ├── client/                 # React + Vite (shop page)
 │   └── admin/                  # React + Vite (admin dashboard)
 └── backend/
-    ├── env/docker-compose-dev.yml     # MySQL 3307, Redis 6319, Kafka 9193, Kafka UI 8080
+    ├── docker-compose.yml     # Option 1: full stack (infra + all services)
+    ├── Dockerfile             # Shared multi-stage build for every service
+    ├── env/docker-compose-dev.yml     # Option 2: infra only (MySQL 3307, Redis 6319, Kafka 9193, Kafka UI 8080)
     ├── common-lib/            # Shared DTOs, events, enums, exceptions
     ├── service-registry/      # :8761 Eureka
     ├── api-gateway/           # :9191
@@ -110,34 +112,22 @@ microservice-ecommerce-clone/
 ```
 
 ## Prerequisites
-- Java JDK 17
-- IntelliJ IDEA
-- Docker
-- Node.js 18+ and npm
 
-## Configuration
+| Option                          | Needs                                  |
+| ------------------------------- | -------------------------------------- |
+| 1. Docker Compose (one command) | Docker (~3 GB free RAM), Node.js 20+   |
+| 2. Command line (development)   | Java JDK 17, Docker, Node.js 20+       |
 
-### Environment variables
+Maven is **not** needed: Option 1 builds inside Docker, Option 2 uses the Maven wrapper (`mvnw`) in each module.
 
-Set these before running (IntelliJ → Run Configuration → **Environment variables**):
+Notes for the commands below:
+- **macOS / Linux**: if `./mvnw` says "permission denied", run `chmod +x backend/*/mvnw`.
+- **Windows PowerShell**: use `.\mvnw.cmd` instead of `./mvnw`.
+- All paths are relative to the repository root.
 
-| Service          | Variable                                      | Purpose              |
-| ---------------- | --------------------------------------------- | -------------------- |
-| product-service  | `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Product image upload |
-| identity-service | `GOOGLE_CLIENT_SECRET`                        | Google login         |
-| frontend/client  | `VITE_GOOGLE_CLIENT_ID`                       | Google login button  |
+## Infrastructure
 
-- **identity-service**: instead of the env var, you can copy
-  `backend/identity-service/src/main/resources/application-local.properties.example`
-  to `application-local.properties` (gitignored) and fill in the secret.
-- **frontend/client**: copy `frontend/client/.env.example` to `.env.local` and set `VITE_GOOGLE_CLIENT_ID`
-  (same value as `GOOGLE_CLIENT_ID` of identity-service).
-
-Never commit real secrets to the repository.
-
-### Infrastructure
-
-Started by `backend/env/docker-compose-dev.yml`:
+Started by `backend/docker-compose.yml` (Option 1) or `backend/env/docker-compose-dev.yml` (Option 2):
 
 | Component | Address               | Notes                                                                                                |
 | --------- | --------------------- | ---------------------------------------------------------------------------------------------------- |
@@ -148,55 +138,134 @@ Started by `backend/env/docker-compose-dev.yml`:
 
 ## Run Project
 
-### Backend
+### Option 1: Docker Compose (one command)
 
-Start the infrastructure (MySQL, Redis, Kafka):
+Builds and starts MySQL, Redis, Kafka, Kafka UI and the 5 backend services:
+
+```bash
+cd backend
+docker compose up --build -d
+```
+
+- The first build takes about 5 minutes (Maven downloads dependencies); later builds are cached.
+- The services need about 1 more minute to start and register in Eureka.
+- Total memory use is about 3 GB.
+
+Check:
+- http://localhost:8761 lists API-GATEWAY, IDENTITY-SERVICE, PRODUCT-SERVICE and ORDER-SERVICE.
+- http://localhost:9191/actuator/health returns `{"status":"UP"}`.
+
+Useful commands (run in `backend/`):
+
+```bash
+docker compose ps                        # status of all containers
+docker compose logs -f order-service     # follow the logs of one service
+docker compose up --build -d order-service   # rebuild one service after a code change
+docker compose down                      # stop everything (data is kept)
+# data lives in backend/env/data/ (shared with Option 2); delete that folder to reset the database
+```
+
+Then start the frontend (see [Frontend](#frontend)).
+
+> Both options share the same MySQL, Redis and Kafka containers.
+> To switch from Option 1 to Option 2, stop only the 5 services:
+> `docker compose stop service-registry api-gateway identity-service product-service order-service`
+
+### Option 2: Run services from the command line (development)
+
+Faster for day-to-day coding: restart only the service you changed and read its logs directly.
+
+#### 1. Start the infrastructure
 
 ```bash
 cd backend/env
 docker-compose -f docker-compose-dev.yml up -d
 ```
 
-Start each microservice manually from IntelliJ IDEA in the following order:
+Check: `docker ps` shows MySQL, Redis and Kafka; Kafka UI is at http://localhost:8080.
+The first start takes about a minute while MySQL runs `init.sql`.
 
-1. `service-registry`
-2. `api-gateway`
-3. `identity-service`
-4. `product-service`
-5. `order-service`
+#### 2. Install common-lib (first time, and after every change to it)
 
-For each service, select the appropriate Run Configuration and click **Run**.
+`common-lib` is not published to Maven Central, so the services cannot resolve it
+until it is installed into your local Maven repository (`~/.m2`):
 
-Wait until the service has started successfully before running the next service.
+```bash
+cd backend/common-lib
+./mvnw clean install -DskipTests
+```
 
-Check that all services are registered at: http://localhost:8761/
+Check: the output ends with `BUILD SUCCESS`.
+
+#### 3. Start the backend services (one terminal each, in this order)
+
+Each command keeps running. Wait for `Started ... in N seconds` before starting the next one.
+
+```bash
+cd backend/service-registry && ./mvnw spring-boot:run   # :8761
+cd backend/api-gateway      && ./mvnw spring-boot:run   # :9191
+cd backend/identity-service && ./mvnw spring-boot:run   # :9898
+cd backend/product-service  && ./mvnw spring-boot:run   # :8084
+cd backend/order-service    && ./mvnw spring-boot:run   # :9195
+```
+
+PowerShell example: `cd backend\service-registry; .\mvnw.cmd spring-boot:run`
+
+Check:
+- http://localhost:8761 lists API-GATEWAY, IDENTITY-SERVICE, PRODUCT-SERVICE and ORDER-SERVICE.
+- http://localhost:9191/actuator/health returns `{"status":"UP"}`.
 
 ![Eureka dashboard](image.png)
 
+`email-service` is not part of the default run for now (both options).
+
+#### 4. Stop
+
+Press Ctrl+C in each service terminal, then:
+
+```bash
+cd backend
+docker compose -f env/docker-compose-dev.yml stop
+```
 
 ### Frontend
 
-#### admin  
-Open a terminal and run:
+Same for both options (two more terminals):
 
 ```bash
-cd frontend/admin
-npm install   # first time only
-npm start
+cd frontend/admin  && npm install && npm start     # http://localhost:3000
+cd frontend/client && npm install && npm run dev   # http://localhost:5173
 ```
 
-Open browser and go to: http://localhost:3000  
-You can login with account:  
-- Username: admin
-- Password: 123456
+`npm install` is only needed the first time.
+Admin login: username `admin`, password `123456`.
 
-#### client    
-Open another terminal and run:
+## Configuration (optional)
+
+The app starts without these values; only **product image upload** and **Google login** need them.
+
+**Option 1 (Docker Compose)**: create `backend/.env` (gitignored) and run `docker compose up -d` again:
 
 ```bash
-cd frontend/client
-npm install   # first time only
-npm run dev
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
+GOOGLE_CLIENT_SECRET=...
 ```
 
-Open browser and go to: http://localhost:5173
+**Option 2 (command line)**: set them in the terminal **before** starting the service:
+
+| Service          | bash / zsh                          | PowerShell                            | Purpose              |
+| ---------------- | ----------------------------------- | ------------------------------------- | -------------------- |
+| product-service  | `export CLOUDINARY_API_KEY=...`     | `$env:CLOUDINARY_API_KEY = "..."`     | Product image upload |
+| product-service  | `export CLOUDINARY_API_SECRET=...`  | `$env:CLOUDINARY_API_SECRET = "..."`  | Product image upload |
+| identity-service | `export GOOGLE_CLIENT_SECRET=...`   | `$env:GOOGLE_CLIENT_SECRET = "..."`   | Google login         |
+
+For Option 2, instead of environment variables you can use local config files (gitignored):
+- **identity-service**: copy `backend/identity-service/src/main/resources/application-local.properties.example`
+  to `application-local.properties` and fill in the secret.
+- **product-service**: copy `backend/product-service/src/main/resources/application-local.yml.example`
+  to `application-local.yml` and fill in the secrets.
+- **frontend/client**: copy `frontend/client/.env.example` to `.env.local` and set `VITE_GOOGLE_CLIENT_ID`
+  (same value as `GOOGLE_CLIENT_ID` of identity-service).
+
+Never commit real secrets to the repository.
