@@ -4,7 +4,8 @@ import { Link as RouterLink, useNavigate, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { useForm } from "react-hook-form";
 import CommonTextField from "../components/FormValidate/CommonTextField";
-import { serviceLogin, serviceGoogleLogin } from "../services/AuthService";
+import { serviceLogin, serviceGoogleLogin, serviceLogout } from "../services/AuthService";
+import { isCustomer, STAFF_ACCOUNT_MESSAGE } from "../utils/roles";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 const GOOGLE_GSI_SRC = "https://accounts.google.com/gsi/client"
@@ -55,7 +56,14 @@ export default function Login() {
 
     // store the user after a successful login (password and Google)
     // the JWT is in an httpOnly cookie set by the backend; the frontend never stores tokens
-    const handleLoginSuccess = (data) => {
+    const handleLoginSuccess = async (data) => {
+        // staff accounts cannot use the client app: clear the cookies the backend just set
+        if (!isCustomer(data)) {
+            await serviceLogout().catch(() => {})
+            setErrorMessage(STAFF_ACCOUNT_MESSAGE)
+            return
+        }
+
         dispatch({
             type: "LOGIN_SUCCESS",
             payload: {
@@ -73,7 +81,7 @@ export default function Login() {
         setErrorMessage(null)
         try {
             const res = await serviceLogin(formData)
-            handleLoginSuccess(res.data.data)
+            await handleLoginSuccess(res.data.data)
         } catch (error) {
             setErrorMessage(getErrorMessage(error, "Invalid username or password."))
         }
@@ -108,7 +116,7 @@ export default function Login() {
                 }
                 try {
                     const res = await serviceGoogleLogin(response.code)
-                    handleLoginSuccess(res.data.data)
+                    await handleLoginSuccess(res.data.data)
                 } catch (error) {
                     setErrorMessage(getErrorMessage(error, "Google login failed."))
                 } finally {

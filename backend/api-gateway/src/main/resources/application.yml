@@ -15,7 +15,7 @@ spring:
           predicates:
             - Path=/api/v1/user/**
 
-        # Product Service - cart (all methods, login required)
+        # Product Service - cart (all methods, CUSTOMER only: staff accounts do not shop)
         # Must come BEFORE product-service-read / product-service-write: the gateway matches routes in order
         - id: product-cart
           uri: lb://PRODUCT-SERVICE
@@ -24,6 +24,9 @@ spring:
             - Method=GET,POST,PUT,DELETE
           filters:
             - name: AuthenticationFilter
+            - name: RoleBasedAccessFilter
+              args:
+                requiredRoles: CUSTOMER
 
         # Product Service - read
         - id: product-service-read
@@ -45,7 +48,7 @@ spring:
                 requiredRoles: ADMINISTRATOR, EMPLOYEE
 
 
-        # Order Service - place order
+        # Order Service - place order (CUSTOMER only: staff accounts do not shop)
         - id: order-place
           uri: lb://ORDER-SERVICE
           predicates:
@@ -53,6 +56,9 @@ spring:
             - Method=POST,OPTIONS
           filters:
             - name: AuthenticationFilter
+            - name: RoleBasedAccessFilter
+              args:
+                requiredRoles: CUSTOMER
 
         # Order Service - orders of the logged-in user
         - id: order-my-orders

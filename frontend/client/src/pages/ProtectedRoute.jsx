@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { serviceGetMe } from "../services/AuthService";
+import { serviceGetMe, serviceLogout } from "../services/AuthService";
+import { isCustomer } from "../utils/roles";
 import { Navigate, Outlet } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -19,6 +20,13 @@ const ProtectedRoute = () => {
         const checkAuth = async () => {
             try {
                 const res = await serviceGetMe();
+
+                // a staff session (e.g. cookie from the admin app) is not allowed in the client app
+                if (!isCustomer(res.data.data)) {
+                    await serviceLogout().catch(() => {});
+                    dispatch({ type: 'LOGOUT', payload: null });
+                    return;
+                }
 
                 dispatch({
                     type: 'LOGIN_SUCCESS',
