@@ -29,9 +29,9 @@ import java.util.Set;
 public class RefreshTokenService {
     private static final Logger LOGGER = LoggerFactory.getLogger(RefreshTokenService.class);
 
-    private static final String TOKEN_KEY = "refresh:";
-    private static final String USED_KEY = "refresh:used:";
-    private static final String USER_KEY = "refresh:user:";
+    private static final String REFRESH_TOKEN_KEY = "refresh:";
+    private static final String USED_REFRESH_TOKEN_KEY = "refresh:used:";
+    private static final String USER_REFRESH_TOKENS_KEY = "refresh:user:";
 
     private final StringRedisTemplate redisTemplate;
     private final JwtProperties jwtProperties;
@@ -45,11 +45,11 @@ public class RefreshTokenService {
         secureRandom.nextBytes(bytes);
         String rawToken = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
         String hash = hash(rawToken);
-        String userKey = USER_KEY + userId;
+        String userRefreshTokensKey = USER_REFRESH_TOKENS_KEY + userId;
 
-        redisTemplate.opsForValue().set(TOKEN_KEY + hash, String.valueOf(userId), jwtProperties.getRefreshTtl());
-        redisTemplate.opsForSet().add(userKey, hash);
-        redisTemplate.expire(userKey, jwtProperties.getRefreshTtl());
+        redisTemplate.opsForValue().set(REFRESH_TOKEN_KEY + hash, String.valueOf(userId), jwtProperties.getRefreshTtl());
+        redisTemplate.opsForSet().add(userRefreshTokensKey, hash);
+        redisTemplate.expire(userRefreshTokensKey, jwtProperties.getRefreshTtl());
         return rawToken;
     }
 
@@ -59,19 +59,30 @@ public class RefreshTokenService {
      * @throws AuthException if the token is unknown, expired or already used
      */
     public Long rotate(String rawToken) {
+        // 1. Hash the raw cookie value: Redis only stores hashes, never the raw token
         String hash = hash(rawToken);
-        String userId = redisTemplate.opsForValue().getAndDelete(TOKEN_KEY + hash);
+
+        // 2. Read and delete the active token in one atomic step, so two concurrent
+        //    refresh calls with the same token cannot both succeed
+        String userId = redisTemplate.opsForValue().getAndDelete(REFRESH_TOKEN_KEY + hash);
         if (userId != null) {
-            redisTemplate.opsForSet().remove(USER_KEY + userId, hash);
-            redisTemplate.opsForValue().set(USED_KEY + hash, userId, jwtProperties.getRefreshTtl());
+            // 3. Valid token: remove it from the user's token set (no longer needed by revokeAll)
+            redisTemplate.opsForSet().remove(USER_REFRESH_TOKENS_KEY + userId, hash);
+            // 4. Remember it as used, so presenting it again is detected as reuse
+            redisTemplate.opsForValue().set(USED_REFRESH_TOKEN_KEY + hash, userId, jwtProperties.getRefreshTtl());
+            // 5. Return the user id; the caller issues a new access token and refresh token
             return Long.valueOf(userId);
         }
 
-        String reusedBy = redisTemplate.opsForValue().get(USED_KEY + hash);
+        // 6. Not an active token: check if it was already rotated before
+        String reusedBy = redisTemplate.opsForValue().get(USED_REFRESH_TOKEN_KEY + hash);
         if (reusedBy != null) {
+            // 7. Reuse of an old token means it was probably stolen: revoke all tokens of the user,
+            //    so both the attacker and the real user must log in again
             LOGGER.warn("Refresh token reuse detected for userId {}, revoking all refresh tokens", reusedBy);
             revokeAll(Long.valueOf(reusedBy));
         }
+        // 8. Unknown, expired or reused token: reject (the caller clears the auth cookies)
         throw new AuthException("Invalid or expired refresh token");
     }
 
@@ -80,9 +91,9 @@ public class RefreshTokenService {
      */
     public void revoke(String rawToken) {
         String hash = hash(rawToken);
-        String userId = redisTemplate.opsForValue().getAndDelete(TOKEN_KEY + hash);
+        String userId = redisTemplate.opsForValue().getAndDelete(REFRESH_TOKEN_KEY + hash);
         if (userId != null) {
-            redisTemplate.opsForSet().remove(USER_KEY + userId, hash);
+            redisTemplate.opsForSet().remove(USER_REFRESH_TOKENS_KEY + userId, hash);
         }
     }
 
@@ -90,12 +101,12 @@ public class RefreshTokenService {
      * Revoke every refresh token of the user, e.g. after a role change or delete.
      */
     public void revokeAll(Long userId) {
-        String userKey = USER_KEY + userId;
-        Set<String> hashes = redisTemplate.opsForSet().members(userKey);
+        String userRefreshTokensKey = USER_REFRESH_TOKENS_KEY + userId;
+        Set<String> hashes = redisTemplate.opsForSet().members(userRefreshTokensKey);
         if (hashes != null && !hashes.isEmpty()) {
-            redisTemplate.delete(hashes.stream().map(hash -> TOKEN_KEY + hash).toList());
+            redisTemplate.delete(hashes.stream().map(hash -> REFRESH_TOKEN_KEY + hash).toList());
         }
-        redisTemplate.delete(userKey);
+        redisTemplate.delete(userRefreshTokensKey);
     }
 
     private static String hash(String rawToken) {
