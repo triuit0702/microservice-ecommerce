@@ -1,4 +1,4 @@
-# Infrastructure only (MySQL, Redis, Kafka, Kafka UI). Single source of truth:
+# Infrastructure only (MySQL, Redis, Kafka, Kafka UI, Prometheus). Single source of truth:
 # backend/docker-compose.yml includes this file for the full stack.
 # Dev:  cd backend && docker compose -f env/docker-compose-dev.yml up -d
 
@@ -111,5 +111,21 @@ services:
       interval: 5s
       timeout: 10s
       retries: 20
+    networks:
+      - shop-network
+  # Prometheus: scrapes /actuator/prometheus of services running on the host
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: container-prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=7d'
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./data/prometheus:/prometheus
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # needed on Linux; Docker Desktop has it by default
     networks:
       - shop-network

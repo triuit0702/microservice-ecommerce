@@ -58,7 +58,10 @@ management:
   endpoints:
     web:
       exposure:
-        include: "*"
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
 
 cloudinary:
   # Secrets come from env vars or application-local.yml, never hard-code them here

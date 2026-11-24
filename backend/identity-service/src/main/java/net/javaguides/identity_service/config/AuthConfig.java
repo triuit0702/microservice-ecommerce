@@ -52,6 +52,7 @@ public class AuthConfig {
                                 "/api/v1/user/auth/logout",
                                 "/actuator/health",
                                 "/actuator/info",
+                                "/actuator/prometheus",
                                 "/error",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
