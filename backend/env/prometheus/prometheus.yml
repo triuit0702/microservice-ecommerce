@@ -20,3 +20,8 @@ scrape_configs:
         labels: { service: product-service }
       - targets: ["host.docker.internal:9195"]
         labels: { service: order-service }
+
+  # Single MySQL server shared by all services
+  - job_name: mysql
+    static_configs:
+      - targets: ["mysqld-exporter:9104"]

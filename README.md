@@ -91,6 +91,7 @@ Details (error codes, topics, dead-letter topics, Kafka down, full sequence): [O
 - Messaging: Apache Kafka.
 - Caching: Redis.
 - Image storage: Cloudinary.
+- Monitoring: Prometheus, mysqld-exporter.
 - Infrastructure: Docker, Docker Compose.
 
 ## Project structure
@@ -102,7 +103,7 @@ microservice-ecommerce-clone/
 └── backend/
     ├── docker-compose.yml     # Option 1: full stack (infra + all services)
     ├── Dockerfile             # Shared multi-stage build for every service
-    ├── env/docker-compose-dev.yml     # Option 2: infra only (MySQL 3307, Redis 6319, Kafka 9193, Kafka UI 8080)
+    ├── env/docker-compose-dev.yml     # Option 2: infra only (MySQL 3307, Redis 6319, Kafka 9193, Kafka UI 8080, Prometheus 9090)
     ├── common-lib/            # Shared DTOs, events, enums, exceptions
     ├── service-registry/      # :8761 Eureka
     ├── api-gateway/           # :9191
@@ -135,12 +136,17 @@ Started by `backend/docker-compose.yml` (Option 1) or `backend/env/docker-compos
 | Redis     | `localhost:6319`      | Cart storage                                                                                         |
 | Kafka     | `localhost:9193`      | Order saga events                                                                                    |
 | Kafka UI  | http://localhost:8080 | View topics and messages                                                                             |
+| Prometheus | http://localhost:9090 | Metrics of the services (`/actuator/prometheus`) and MySQL (via `mysqld-exporter`)                   |
+
+Monitoring check: every target on http://localhost:9090/targets is **UP** (a service shows DOWN while it is not running),
+and the query `mysql_up` returns `1`. `mysqld-exporter` needs no setup: it logs in to MySQL with the dev root account.
+If you change the MySQL root password, set `MYSQLD_EXPORTER_PASSWORD` to the same value.
 
 ## Run Project
 
 ### Option 1: Docker Compose (one command)
 
-Builds and starts MySQL, Redis, Kafka, Kafka UI and the 5 backend services:
+Builds and starts MySQL, Redis, Kafka, Kafka UI, Prometheus, mysqld-exporter and the 5 backend services:
 
 ```bash
 cd backend

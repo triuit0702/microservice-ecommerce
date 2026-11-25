@@ -129,3 +129,22 @@ services:
       - "host.docker.internal:host-gateway"   # needed on Linux; Docker Desktop has it by default
     networks:
       - shop-network
+
+  # MySQL metrics for Prometheus: one exporter covers the whole server (user_db, product_db, order_db)
+  mysqld-exporter:
+    image: prom/mysqld-exporter:v0.17.2
+    container_name: container-mysqld-exporter
+    command:
+      - '--mysqld.address=mysql:3306'
+      - '--mysqld.username=root'
+      - '--collect.info_schema.tables'
+      - '--collect.info_schema.tables.databases=user_db,product_db,order_db'
+      - '--collect.perf_schema.eventsstatements'
+      - '--collect.perf_schema.indexiowaits'
+    environment:
+      MYSQLD_EXPORTER_PASSWORD: ${MYSQLD_EXPORTER_PASSWORD:-123456}   # must match MYSQL_ROOT_PASSWORD above
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - shop-network
