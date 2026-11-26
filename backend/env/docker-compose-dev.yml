@@ -1,4 +1,4 @@
-# Infrastructure only (MySQL, Redis, Kafka, Kafka UI, Prometheus). Single source of truth:
+# Infrastructure only (MySQL, Redis, Kafka, Kafka UI, Prometheus, Grafana). Single source of truth:
 # backend/docker-compose.yml includes this file for the full stack.
 # Dev:  cd backend && docker compose -f env/docker-compose-dev.yml up -d
 
@@ -8,6 +8,9 @@ name: ecommerce
 networks:
   shop-network:
     driver: bridge
+
+volumes:
+  grafana-data:
 
 services:
   # mysql
@@ -146,5 +149,22 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+    networks:
+      - shop-network
+
+  # Grafana: datasource and dashboards are provisioned from env/grafana
+  grafana:
+    image: grafana/grafana:13.3.2
+    container_name: container-grafana
+    ports:
+      - "3001:3000"   # 3000 is used by the admin frontend
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}   # only applied when grafana-data is first created
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
     networks:
       - shop-network

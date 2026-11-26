@@ -1,0 +1,11 @@
+apiVersion: 1
+
+# Dashboards come from JSON files in env/grafana/dashboards (UI edits cannot be saved over them)
+providers:
+  - name: ecommerce
+    folder: Ecommerce
+    type: file
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards

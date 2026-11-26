@@ -62,6 +62,9 @@ management:
   metrics:
     tags:
       application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:   # buckets for p95/p99 in Grafana
+        "[http.server.requests]": true
 
 cloudinary:
   # Secrets come from env vars or application-local.yml, never hard-code them here

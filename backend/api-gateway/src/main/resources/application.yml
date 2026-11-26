@@ -133,6 +133,9 @@ management:
   metrics:
     tags:
       application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:   # buckets for p95/p99 in Grafana
+        "[http.server.requests]": true
   tracing:
     sampling:
       probability: 1
